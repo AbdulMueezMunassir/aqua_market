@@ -47,11 +47,33 @@ const sampleProducts = [
     temperament: 'Peaceful',
     inStock: true
   },
+  {
+    id: 5,
+    name: 'Blue Gourami',
+    category: 'Gourami',
+    price: 1000,
+    rating: 4.5,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBT15SM1KmOegXrXqqxFtapb9hNrPi0ngyiFwXYqEzhKfAnqBl8WNyRYWwv3eVtCgdPWvnnbu7QKnDzv8AGG2_65PzUSUmQO7i8JWIXqdFNvr5gkP21Sw91Wa-OWHb2KvzTovq9VMWdevaYkpVr41_1bZ7wWevvx3ywocELhlTFMR4QFUQP0n3WImndIDJjzcWQVyKolbe31rBTvhV2vfCgxIQmN0oZMefadEvYDhtc58AVNLEvAn4v',
+    temperature: '72-82°F',
+    temperament: 'Semi-Aggressive',
+    inStock: true
+  },
+  {
+    id: 6,
+    name: 'Gold Gourami',
+    category: 'Gourami',
+    price: 1200,
+    rating: 4.4,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJQ9enrBEegWIXDDnCcDYs9dz-ffsQfxya9dtUjOkpxFjwWuUt6cQvmOPCoXIxQoIhVnvFQZNHmq3ZAlcYTn3SsULr9YALwHOXoJkNWnvnivUdPD3Y7V0a1jRzQcEfmDChwHSiMY7qNhxYu9pg45mTgdUNuY4g-v2MjEJsAhp3HWQLdSqhiuIjz4ZotqGDMTvzEyw1cRkUEBNDdQ4F_rXrvoetxc9KexmdVDPWsrtyJIG1NqOuutZk',
+    temperature: '72-82°F',
+    temperament: 'Semi-Aggressive',
+    inStock: true
+  }
 ]
 
 export function ProductGrid() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {sampleProducts.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}

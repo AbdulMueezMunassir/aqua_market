@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useCartStore } from '@/store/cartStore'
 
 const navItems = [
   { name: 'Home', href: '/' },
@@ -16,6 +17,14 @@ const navItems = [
 export function TopNavBar() {
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState('')
+  const [mounted, setMounted] = useState(false)
+  const { getTotalItems } = useCartStore()
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const totalItems = mounted ? getTotalItems() : 0
 
   return (
     <header className="fixed top-0 w-full z-50 bg-surface/60 dark:bg-inverse-surface/60 backdrop-blur-[40px] border-b border-white/20 dark:border-white/10 shadow-sm shadow-tertiary/5 hidden md:block transition-all duration-300">
@@ -23,17 +32,9 @@ export function TopNavBar() {
         {/* Logo */}
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/images/logo.png"
-              alt="Aqua Market Logo"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain rounded-xl"
-              onError={(e) => {
-                // Fallback if image doesn't exist
-                e.currentTarget.src = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrqGkhRvde7mnodoQLlJuwQ3dswok1EE7-KsDVGB3_0NUnusiCZezJiYf8NiqY_EjG_gH1sGsbnh3lr1EhnDMDxzuvNjFnvh00VoB23s3HScpAm2MVdNSzfvbG52GhjIm7C7eUa_fcTFx2nXwzVlgTXjN6PYmXDerq2jt1n77zPQzXE_9zg20fANEvxv8oLemhIJmza3fmsflaNbrt_95XO2vS2ApuaX-HrYSe1dTQ7xgsxpouEStI'
-              }}
-            />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-lg">
+              A
+            </div>
             <span className="font-display-lg text-headline-md text-primary dark:text-primary-fixed-dim tracking-tight">
               Aqua Market
             </span>
@@ -82,9 +83,11 @@ export function TopNavBar() {
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
             </svg>
-            <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-              0
-            </span>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
           </Link>
           
           <button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
@@ -94,16 +97,9 @@ export function TopNavBar() {
           </button>
           
           <Link href="/profile">
-            <Image
-              src="/images/avatar.jpg"
-              alt="Customer Profile"
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full border-2 border-surface-container-high object-cover shadow-sm cursor-pointer active:scale-95"
-              onError={(e) => {
-                e.currentTarget.src = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAaYd9GOncw9dZB12jXWdC2RuRpYXyBkyZgcUQ_J5QHjCY9oPGGt-PxpnLHWB13q1ltQ5k_whG1XpPavEQt8KujnIeDm0KdZbq4Ca-ZKDfjVyiTJ8Tgv3kwz1nPWfN6wrgyuHKlU-7JK-152Xt0HRyR2Imq3XZx-9XpTiFbJ-LbaNPxM4NZ5DTW4nAdzC2zuk-ZZ9xUesNF6F1SIsgR3jGyHCHKEnie8joFlFSOrD9fXBUDZmyaSJGr'
-              }}
-            />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95">
+              <span className="text-primary font-semibold text-sm">JD</span>
+            </div>
           </Link>
         </div>
       </div>

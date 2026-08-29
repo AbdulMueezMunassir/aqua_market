@@ -11,6 +11,11 @@
   body {
     @apply bg-background text-on-background font-body-md antialiased;
   }
+  
+  /* Ensure images render properly */
+  img {
+    @apply max-w-full h-auto;
+  }
 }
 
 @layer components {
@@ -55,4 +60,18 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-primary;
+}
+
+/* Better image loading */
+.image-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.image-container img {
+  transition: transform 0.3s ease;
+}
+
+.image-container:hover img {
+  transform: scale(1.05);
 }

@@ -1,6 +1,7 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { ProductGrid } from '@/components/marketplace/ProductGrid'
+import { Suspense } from 'react'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 export default function HomePage() {
   return (
@@ -9,12 +10,14 @@ export default function HomePage() {
       <section className="relative h-[80vh] min-h-[600px] w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop pt-8 pb-16 flex items-center justify-center">
         <div className="absolute inset-x-margin-mobile md:inset-x-margin-desktop top-8 bottom-16 rounded-[40px] overflow-hidden shadow-2xl shadow-primary/10">
           <div 
-            className="absolute inset-0 bg-cover bg-center"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{ 
-              backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBMe6SFFhxtcQrFYu_UvNWeB6juNPd6gLLSOaMvdxQkmMRtQDWuKYeLpwjNUpGV5Jlk4LBTwgqRn0soy-ENwO_PMFXPl9CXae3T2SU9T6SgS1i5p1wtzC5hCDCp1q14oGn876UUSI9kw-iyqDqXRFT581F20CF197MdyUloabGWPlGXiFZtAXFjudi0geD0b4fFAVpV25sd7G1N7NqFwiWOdwcVh9Jl17BLGQppRJUJG0OwoROxqRVG')" 
+              backgroundImage: "url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1600&h=800&fit=crop')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-surface/90 via-surface/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-surface/95 via-surface/70 to-transparent" />
         </div>
         
         <div className="relative z-10 w-full max-w-container-max mx-auto px-8 md:px-16 flex flex-col items-start justify-center h-full">
@@ -55,7 +58,15 @@ export default function HomePage() {
             View All →
           </Link>
         </div>
-        <ProductGrid />
+        <Suspense fallback={
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-80 rounded-xl" />
+            ))}
+          </div>
+        }>
+          <ProductGrid />
+        </Suspense>
       </section>
     </>
   )
