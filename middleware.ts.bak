@@ -1,0 +1,50 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  // Get token from cookies (not from headers for better compatibility)
+  const token = request.cookies.get('auth_token')?.value
+  
+  // Get the pathname
+  const path = request.nextUrl.pathname
+
+  // Public paths that don't require authentication
+  const publicPaths = ['/auth/login', '/auth/register', '/']
+  const isPublicPath = publicPaths.includes(path) || path === '/'
+  
+  // API routes - always allow
+  if (path.startsWith('/api')) {
+    return NextResponse.next()
+  }
+
+  // Admin and protected routes
+  const isProtectedRoute = path.startsWith('/admin') || 
+                          path.startsWith('/staff') || 
+                          path.startsWith('/profile')
+
+  // If user has token and tries to access login/register, redirect to home
+  if (token && (path === '/auth/login' || path === '/auth/register')) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // If user has no token and tries to access protected route, redirect to login
+  if (!token && isProtectedRoute) {
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  // Allow all other requests
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}

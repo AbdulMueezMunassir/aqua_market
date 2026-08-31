@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { AuthProvider } from '@/context/AuthContext'
 import { TopNavBar } from '@/components/common/TopNavBar'
 import { BottomNavBar } from '@/components/common/BottomNavBar'
 import { Footer } from '@/components/common/Footer'
@@ -20,12 +21,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className={inter.className}>
-        <TopNavBar />
-        <main className="min-h-screen pt-24 pb-16 md:pb-0">
-          {children}
-        </main>
-        <Footer />
-        <BottomNavBar />
+        <AuthProvider>
+          <TopNavBar />
+          <main className="min-h-screen pt-24 pb-16 md:pb-0">
+            {children}
+          </main>
+          <Footer />
+          <BottomNavBar />
+        </AuthProvider>
       </body>
     </html>
   )
