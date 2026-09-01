@@ -2,23 +2,24 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface CartItem {
-  id: number
+  id: string
   name: string
   price: number
   quantity: number
   image: string
   category: string
-  maxStock: number
+  stock: number
 }
 
 interface CartStore {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
-  removeItem: (id: number) => void
-  updateQuantity: (id: number, quantity: number) => void
+  removeItem: (id: string) => void
+  updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
+  getItemCount: (id: string) => number
 }
 
 export const useCartStore = create<CartStore>()(
@@ -33,7 +34,7 @@ export const useCartStore = create<CartStore>()(
         if (existingItem) {
           const newQuantity = Math.min(
             existingItem.quantity + (item.quantity || 1),
-            existingItem.maxStock || 99
+            existingItem.stock || 99
           )
           set({
             items: items.map((i) =>
@@ -47,7 +48,6 @@ export const useCartStore = create<CartStore>()(
               {
                 ...item,
                 quantity: item.quantity || 1,
-                maxStock: item.maxStock || 99,
               },
             ],
           })
@@ -65,7 +65,7 @@ export const useCartStore = create<CartStore>()(
         }
         set({
           items: get().items.map((item) =>
-            item.id === id ? { ...item, quantity: Math.min(quantity, item.maxStock || 99) } : item
+            item.id === id ? { ...item, quantity: Math.min(quantity, item.stock || 99) } : item
           ),
         })
       },
@@ -78,6 +78,11 @@ export const useCartStore = create<CartStore>()(
       
       getTotalPrice: () => {
         return get().items.reduce((total, item) => total + item.price * item.quantity, 0)
+      },
+      
+      getItemCount: (id) => {
+        const item = get().items.find((i) => i.id === id)
+        return item?.quantity || 0
       },
     }),
     {

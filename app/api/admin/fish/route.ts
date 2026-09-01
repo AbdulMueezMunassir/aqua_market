@@ -1,101 +1,148 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server'
+import connectToDatabase from '@/lib/mongodb'
+import Product from '@/models/Product'
+import jwt from 'jsonwebtoken'
 
-// mock data - in production,this would come from database
-let fishInventory = [
-    {
-        id : 1,
-        name: 'Royal Gramma',
-        scientificName: ''Gramma loreto',
-        category: 'Saltwater',
-        price: 8500,
-        stock: 12,
-        status: 'Active'
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAi-KAP1Sgn6y9gJ9IFHqEctE8RSfZDOs7ohgAK17s6BoCmxE9LQx2g3YcP-Yx178UWoDaQ0YQaFQ12mnD5mwFgRPG3P2C5zPNDncuPxxRhsMjSF1TfAORfirhuB70CoT1X3mEk7l8LNabRq0JEpoXpQmHfE36cx7J5IKmR4At2TQGvQlzOFnx7hkaUVGFSyUQMpgX1vjaJUnJQNlhGKVI6vR1g6JrO2Zp-1qCZMlRapVTqGLLvEEDL',
-        createdAt: new Date('2026-08-25'),
-        udatedAt: new Date('2026-08-27')
-    },
-    {
-        id : 2,
-        name: 'Neon Tetra',
-        scientificName: 'Paracheirodon innesi',
-        category: 'Freshwater',
-        price: 200,
-        stock: 125,
-        status: 'Active'
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDoNmUTUWEZP8we5zVp40lgs7jWF62Y1iSA2DEpRIcwvzpqru3V-_9qOECdh-pOpt6b9xtgmfSedfdQwd_dn1e1wTUTzs8JwpTOEKDXlgG4Vs914u-_dGj2NwPgXnkHziTeRTsPunNNxATbiGCy7FswaVtxvYR09a1POrmhQyPaYPp-m3BVM_5FrCNnXAK1psgrFfGNlYU6-DnNFtedr5uSbps8aZ2bR7QYnHNZFyjd3XWClLcneCCw',
-        createdAt: new Date('2026-08-25'),
-        udatedAt: new Date('2026-08-27')
-    },
-    {
-       id: 3,
-    name: 'Crystal Red Shrimp',
-    scientificName: 'Caridina cantonensis',
-    category: 'Invertebrates',
-    price: 1500,
-    stock: 0,
-    status: 'Out of Stock',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZFCPFsaZ7bD0V9TyZBdByH0UKeej5WDt1Rv7JREWu0G-kjMlFYhFgzrpOJuwd2ZtBB0V0AVS7Shcbml0BW-y20zNwNQByoN0MIs8YcjtKu28wg6TFy8X15OKLuGWKhj6LrH7Gjks3-YgYrscPW1Zwxkag3HXGRHA2wTEH9A18WEN73b1pY9Vvz47iixroC-ZfIdcaa3CArEv1ljJ9giaz7WTaKc-wkc7-QZVeoIiBXwObFgT6uGkp',
-    createdAt: new Date('2024-10-03'),
-    updatedAt: new Date('2024-10-03') 
-    },
-    {
-        id: 4,
-    name: 'Halfmoon Betta',
-    scientificName: 'Betta splendens',
-    category: 'Freshwater',
-    price: 2500,
-    stock: 3,
-    status: 'Inactive',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-oawayu2wCKx3u3KuKv8mJutMAfRj6KJat7GiiN2hNjgoFEKehAf3cCzwymJ5Ai1L-u4bsYzH5bYaQEFRfYdhG9D88WjitFXuxPZ-hwLGdgnFyPibZZEaxdh4R66XwmseOwZ819lel7Q4cPfghCaVQZ_lgY9Y14z3-7tkgJdtrWVBwGOvRDuMFQA3uRiHg2GYFIxbiwM0PyWIm_AkB3Y_kWiamhTO-CrOvrE5RRTT5Q3NnukAwBsI',
-    createdAt: new Date('2024-10-04'),
-    updatedAt: new Date('2024-10-04')
-    }
-]
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 
-export async function GET() {
-    return NextResponse.json(fishInventory)
-}
-
-export async function POST(request: Request) {
-    const body = await request.json()
-    const newFish = {
-        id: Date.now(),
-        ...body,
-        createAt: new Date(),
-        updateAt: new Date()
-    }
-    fishInventory.push(newFish)
-    return NextResponse.json(newFish, {status: 201})
-}
-
-export async function PUT(request: Request) {
-    const body = await request.json()
-    const { id, ...updates } = body
-    const index = fishInventory.findIndex(fish => fish.id == id)
-
-    if (index === -1){
-        return NextResponse.json({error: 'Fish not found'}, {status: 404 });
-        
-    }
-
-    fishInventory[index] = {
-        ...fishInventory[index],
-        ...updates,
-        updateAt: new Date()
-    }
-
-    return NextResponse.json(fishInventory[index])
-}
-
-export async function DELETE(request: Request) {
+// GET all fish
+export async function GET(request: Request) {
+  try {
+    await connectToDatabase()
     const { searchParams } = new URL(request.url)
-    const id = parseInt(searchParams.get('id') || '0')
+    const category = searchParams.get('category')
+    const status = searchParams.get('status')
+    
+    let query: any = {}
+    if (category && category !== 'all') query.category = category
+    if (status && status !== 'all') query.status = status
+    
+    const products = await Product.find(query).sort({ createdAt: -1 })
+    return NextResponse.json(products)
+  } catch (error: any) {
+    console.error('Error fetching products:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch products' },
+      { status: 500 }
+    )
+  }
+}
 
-    const index = fishInventory.findIndex(fish => fish.id === id)
-    if(index === -1 ){
-        return NextResponse.json({error: 'Fish Not Found'}, {status: 404})
+// POST - Create new fish
+export async function POST(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const token = authHeader.split(' ')[1]
+    try {
+      jwt.verify(token, JWT_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+    
+    await connectToDatabase()
+    const body = await request.json()
+    
+    const product = await Product.create({
+      ...body,
+      price: parseFloat(body.price),
+      stock: parseInt(body.stock),
+    })
+    
+    return NextResponse.json(product, { status: 201 })
+  } catch (error: any) {
+    console.error('Error creating product:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to create product' },
+      { status: 500 }
+    )
+  }
+}
 
-    fishInventory.splice(index, 1)
-    return NextResponse.json({message: 'Fish deleted successfully'})
+// PUT - Update fish
+export async function PUT(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const token = authHeader.split(' ')[1]
+    try {
+      jwt.verify(token, JWT_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+    
+    await connectToDatabase()
+    const body = await request.json()
+    const { id, ...updateData } = body
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
+    }
+    
+    const product = await Product.findByIdAndUpdate(
+      id,
+      {
+        ...updateData,
+        price: parseFloat(updateData.price),
+        stock: parseInt(updateData.stock),
+      },
+      { new: true, runValidators: true }
+    )
+    
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+    
+    return NextResponse.json(product)
+  } catch (error: any) {
+    console.error('Error updating product:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to update product' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE - Delete fish
+export async function DELETE(request: Request) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const token = authHeader.split(' ')[1]
+    try {
+      jwt.verify(token, JWT_SECRET)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+    
+    await connectToDatabase()
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
+    }
+    
+    const product = await Product.findByIdAndDelete(id)
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+    
+    return NextResponse.json({ message: 'Product deleted successfully' })
+  } catch (error: any) {
+    console.error('Error deleting product:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete product' },
+      { status: 500 }
+    )
+  }
 }

@@ -1,24 +1,54 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCartStore } from '@/store/cartStore'
-import Link from 'next/link'
+import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const { user, token, isAuthenticated } = useAuth()
   const { items, getTotalPrice, getTotalItems, clearCart } = useCartStore()
-  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [orderId, setOrderId] = useState('')
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
     phone: '',
     address: '',
     city: '',
     state: '',
     zipCode: '',
-    paymentMethod: 'card'
+    paymentMethod: 'cod',
+    notes: '',
   })
+
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!isAuthenticated) {
+      router.push('/auth/login')
+      return
+    }
+
+    // Redirect if cart is empty
+    if (items.length === 0) {
+      router.push('/cart')
+      return
+    }
+
+    // Pre-fill user data
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        phone: user.phone || '',
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zipCode || '',
+      }))
+    }
+  }, [isAuthenticated, user, items, router])
 
   const subtotal = getTotalPrice()
   const totalItems = getTotalItems()
@@ -26,161 +56,177 @@ export default function CheckoutPage() {
   const tax = subtotal * 0.15
   const total = subtotal + deliveryFee + tax
 
-  if (items.length === 0) {
-    router.push('/cart')
-    return null
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would process the order
-    // For now, we'll just show a success message
-    setStep(3)
-    // Clear cart after successful order
-    setTimeout(() => {
+    setError('')
+    setLoading(true)
+
+    try {
+      const orderData = {
+        items: items.map(item => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal,
+        deliveryFee,
+        tax,
+        total,
+        phone: formData.phone,
+        paymentMethod: formData.paymentMethod,
+        shipping: {
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+        },
+        notes: formData.notes,
+        customer: user?.name || '',
+        email: user?.email || '',
+      }
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to place order')
+      }
+
+      setOrderId(data.orderId)
+      setSuccess(true)
       clearCart()
-    }, 2000)
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        router.push('/orders')
+      }, 3000)
+    } catch (error: any) {
+      setError(error.message || 'Failed to place order')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
+        <div className="glass-panel rounded-2xl p-12 text-center max-w-2xl mx-auto">
+          <div className="w-20 h-20 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <h2 className="font-display-lg-mobile text-display-lg-mobile mb-4">Order Placed Successfully!</h2>
+          <p className="text-on-surface-variant mb-2">Order ID: <span className="font-medium text-primary">{orderId}</span></p>
+          <p className="text-on-surface-variant mb-8">Thank you for your order! We'll send you a confirmation email shortly.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/orders" className="btn-primary">
+              View Orders
+            </Link>
+            <Link href="/shop" className="glass-panel px-6 py-3 rounded-xl text-primary hover:bg-white/50 transition-colors">
+              Continue Shopping
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
       <div className="mb-8">
-        <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-2">
+        <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary">
           Checkout
         </h1>
-        <p className="text-on-surface-variant font-body-md">
-          Complete your order details below.
-        </p>
+        <p className="text-on-surface-variant mt-2">Complete your order details below.</p>
       </div>
 
-      {/* Steps */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className={`flex items-center gap-2 ${step === 1 ? 'text-primary' : 'text-on-surface-variant'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-            step === 1 ? 'bg-primary text-white' : 'bg-surface-container-high'
-          }`}>
-            1
-          </div>
-          <span className="font-label-sm">Cart</span>
-        </div>
-        <div className="flex-1 h-0.5 bg-outline-variant/30" />
-        <div className={`flex items-center gap-2 ${step === 2 ? 'text-primary' : 'text-on-surface-variant'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-            step === 2 ? 'bg-primary text-white' : 'bg-surface-container-high'
-          }`}>
-            2
-          </div>
-          <span className="font-label-sm">Details</span>
-        </div>
-        <div className="flex-1 h-0.5 bg-outline-variant/30" />
-        <div className={`flex items-center gap-2 ${step === 3 ? 'text-primary' : 'text-on-surface-variant'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-            step === 3 ? 'bg-primary text-white' : 'bg-surface-container-high'
-          }`}>
-            3
-          </div>
-          <span className="font-label-sm">Confirm</span>
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Checkout Form */}
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-8">
+            <h2 className="font-headline-md text-headline-md mb-6">Delivery Information</h2>
 
-      {step === 1 && (
-        <div className="glass-panel rounded-xl p-8 text-center">
-          <h2 className="font-headline-md text-headline-md mb-4">Review Your Order</h2>
-          <div className="space-y-4 mb-8 max-w-md mx-auto">
-            {items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center border-b border-outline-variant/30 pb-2">
-                <span>{item.name} × {item.quantity}</span>
-                <span className="font-medium">LKR {(item.price * item.quantity).toLocaleString()}</span>
+            {error && (
+              <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20">
+                {error}
               </div>
-            ))}
-            <div className="flex justify-between font-bold pt-4">
-              <span>Total</span>
-              <span className="text-primary">LKR {total.toLocaleString()}</span>
-            </div>
-          </div>
-          <button
-            onClick={() => setStep(2)}
-            className="btn-primary"
-          >
-            Continue to Details
-          </button>
-        </div>
-      )}
+            )}
 
-      {step === 2 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="glass-panel rounded-xl p-8">
-              <h2 className="font-headline-md text-headline-md mb-6">Delivery Information</h2>
-              
+            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    Full Name *
+                    Full Name
                   </label>
                   <input
                     type="text"
-                    name="fullName"
-                    required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
+                    value={user?.name || ''}
+                    disabled
+                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 opacity-70 cursor-not-allowed"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    Email *
+                    Email
                   </label>
                   <input
                     type="email"
-                    name="email"
-                    required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
-                    value={formData.email}
-                    onChange={handleInputChange}
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 opacity-70 cursor-not-allowed"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    Address *
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  name="phone"
+                  className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                  Address *
+                </label>
+                <input
+                  type="text"
+                  required
+                  name="address"
+                  className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">
                     City *
                   </label>
                   <input
                     type="text"
-                    name="city"
                     required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
+                    name="city"
+                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                     value={formData.city}
-                    onChange={handleInputChange}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   />
                 </div>
                 <div>
@@ -189,11 +235,11 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="text"
-                    name="state"
                     required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
+                    name="state"
+                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                     value={formData.state}
-                    onChange={handleInputChange}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   />
                 </div>
                 <div>
@@ -202,122 +248,103 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="text"
-                    name="zipCode"
                     required
-                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-1 focus:ring-primary outline-none"
+                    name="zipCode"
+                    className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                     value={formData.zipCode}
-                    onChange={handleInputChange}
+                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="mt-8">
-                <h3 className="font-headline-md text-headline-md mb-4">Payment Method</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-4 border border-outline-variant/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="card"
-                      checked={formData.paymentMethod === 'card'}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span>Credit / Debit Card</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-4 border border-outline-variant/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="bank"
-                      checked={formData.paymentMethod === 'bank'}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span>Bank Transfer</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-4 border border-outline-variant/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cod"
-                      checked={formData.paymentMethod === 'cod'}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span>Cash on Delivery</span>
-                  </label>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                >
+                  <option value="cod">Cash on Delivery</option>
+                  <option value="card">Credit / Debit Card</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
               </div>
 
-              <div className="flex gap-4 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="flex-1 px-6 py-3 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 btn-primary justify-center"
-                >
-                  Place Order
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                  Order Notes (Optional)
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Any special instructions..."
+                />
               </div>
-            </form>
-          </div>
+            </div>
 
-          <div className="lg:col-span-1">
-            <div className="glass-panel rounded-xl p-6 sticky top-32">
-              <h3 className="font-headline-md text-headline-md mb-4">Order Summary</h3>
-              <div className="space-y-2 mb-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>{item.name} × {item.quantity}</span>
-                    <span>LKR {(item.price * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
+            <div className="flex gap-4 mt-8">
+              <Link
+                href="/cart"
+                className="flex-1 px-6 py-3 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors text-center"
+              >
+                Back to Cart
+              </Link>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 btn-primary justify-center py-3"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  `Place Order · LKR ${total.toLocaleString()}`
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Order Summary */}
+        <div className="lg:col-span-1">
+          <div className="glass-panel rounded-2xl p-6 sticky top-32">
+            <h3 className="font-headline-md text-headline-md mb-4">Order Summary</h3>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span>{item.name} × {item.quantity}</span>
+                  <span>LKR {(item.price * item.quantity).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-outline-variant/30 pt-4 space-y-2">
+              <div className="flex justify-between text-sm text-on-surface-variant">
+                <span>Subtotal ({totalItems} items)</span>
+                <span>LKR {subtotal.toLocaleString()}</span>
               </div>
-              <div className="border-t border-outline-variant/30 pt-4 space-y-2">
-                <div className="flex justify-between text-sm text-on-surface-variant">
-                  <span>Subtotal</span>
-                  <span>LKR {subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm text-on-surface-variant">
-                  <span>Delivery</span>
-                  <span>{deliveryFee === 0 ? 'Free' : `LKR ${deliveryFee.toLocaleString()}`}</span>
-                </div>
-                <div className="flex justify-between text-sm text-on-surface-variant">
-                  <span>Tax</span>
-                  <span>LKR {tax.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-bold pt-2 border-t border-outline-variant/30">
-                  <span>Total</span>
-                  <span className="text-primary">LKR {total.toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between text-sm text-on-surface-variant">
+                <span>Delivery</span>
+                <span>{deliveryFee === 0 ? 'Free' : `LKR ${deliveryFee.toLocaleString()}`}</span>
+              </div>
+              <div className="flex justify-between text-sm text-on-surface-variant">
+                <span>Tax (15%)</span>
+                <span>LKR {tax.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between font-bold pt-2 border-t border-outline-variant/30">
+                <span>Total</span>
+                <span className="text-primary">LKR {total.toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
-      )}
-
-      {step === 3 && (
-        <div className="glass-panel rounded-xl p-12 text-center max-w-2xl mx-auto">
-          <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          </div>
-          <h2 className="font-display-lg-mobile text-display-lg-mobile mb-4">Order Confirmed!</h2>
-          <p className="text-on-surface-variant mb-8">
-            Thank you for your order! We'll send you a confirmation email shortly.
-          </p>
-          <Link href="/" className="btn-primary inline-flex">
-            Continue Shopping
-          </Link>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
