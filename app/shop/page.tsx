@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useCartStore } from '@/store/cartStore'
+import { useWishlistStore } from '@/store/wishlistStore'
 
 interface Product {
   _id: string
@@ -33,6 +34,7 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState('-createdAt')
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 12, pages: 0 })
   const { addItem, getItemCount } = useCartStore()
+  const { isInWishlist, toggleItem } = useWishlistStore()
 
   useEffect(() => {
     fetchProducts()
@@ -44,8 +46,8 @@ export default function ShopPage() {
       const url = `/api/products?category=${selectedCategory}&sort=${sortBy}&page=${pagination.page}&limit=${pagination.limit}`
       const response = await fetch(url)
       const data = await response.json()
-      setProducts(data.products)
-      setPagination(data.pagination)
+      setProducts(data.products || [])
+      setPagination(data.pagination || { total: 0, page: 1, limit: 12, pages: 0 })
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -62,6 +64,18 @@ export default function ShopPage() {
       category: product.category,
       stock: product.stock,
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="glass-panel rounded-xl h-80 animate-pulse bg-surface-container-high" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -102,13 +116,7 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="glass-panel rounded-xl h-80 animate-pulse bg-surface-container-high" />
-          ))}
-        </div>
-      ) : products.length === 0 ? (
+      {products.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-on-surface-variant">No products found in this category.</p>
         </div>
@@ -117,6 +125,8 @@ export default function ShopPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product) => {
               const inCartCount = getItemCount(product._id)
+              const isWishlisted = isInWishlist(product._id)
+              
               return (
                 <div key={product._id} className="glass-panel rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300">
                   <Link href={`/product/${product._id}`}>
@@ -137,6 +147,18 @@ export default function ShopPage() {
                           Out of Stock
                         </div>
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggleItem(product._id)
+                        }}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/70 backdrop-blur-sm flex items-center justify-center hover:text-error transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                        </svg>
+                      </button>
                     </div>
                   </Link>
                   
@@ -154,7 +176,11 @@ export default function ShopPage() {
                       </span>
                       {product.stock > 0 && (
                         <button
-                          onClick={() => handleAddToCart(product)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleAddToCart(product)
+                          }}
                           className="px-4 py-2 rounded-lg btn-primary text-sm"
                         >
                           {inCartCount > 0 ? `✓ ${inCartCount}` : 'Add to Cart'}

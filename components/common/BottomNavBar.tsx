@@ -8,8 +8,8 @@ import { useCartStore } from '@/store/cartStore'
 const navItems = [
   { name: 'Home', href: '/' },
   { name: 'Shop', href: '/shop' },
+  { name: 'Wishlist', href: '/wishlist' },
   { name: 'Cart', href: '/cart' },
-  { name: 'Orders', href: '/orders' },
   { name: 'Profile', href: '/profile' },
 ]
 

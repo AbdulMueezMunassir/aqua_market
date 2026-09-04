@@ -1,14 +1,14 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 
-const MONGODB_URI = 'mongodb://localhost:27017/aqua_market'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/aqua_market'
 
-// Define User Schema
+// Simple schema without pre-hooks
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'staff', 'customer'], default: 'customer' },
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+  role: String,
   avatar: { type: String, default: '' },
   phone: { type: String, default: '' },
   address: { type: String, default: '' },
@@ -16,23 +16,6 @@ const UserSchema = new mongoose.Schema({
   state: { type: String, default: '' },
   zipCode: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-})
-
-// Hash password before saving - FIXED version
-UserSchema.pre('save', async function(next) {
-  // Make sure we have a password to hash
-  if (!this.isModified('password')) {
-    return next()
-  }
-  
-  try {
-    const salt = await bcrypt.genSalt(10)
-    this.password = await bcrypt.hash(this.password, salt)
-    next()
-  } catch (error) {
-    next(error)
-  }
 })
 
 const User = mongoose.models.User || mongoose.model('User', UserSchema)
@@ -61,19 +44,23 @@ const users = [
 async function seed() {
   try {
     console.log('Connecting to MongoDB...')
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
+    // Remove deprecated options
+    await mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB')
 
     // Clear existing users
     await User.deleteMany({})
     console.log('✅ Cleared existing users')
 
-    // Create users
+    // Hash passwords manually and create users
     for (const userData of users) {
-      const user = new User(userData)
+      const salt = await bcrypt.genSalt(10)
+      const hashedPassword = await bcrypt.hash(userData.password, salt)
+      
+      const user = new User({
+        ...userData,
+        password: hashedPassword,
+      })
       await user.save()
       console.log(`✅ Created user: ${userData.email} (${userData.role})`)
     }

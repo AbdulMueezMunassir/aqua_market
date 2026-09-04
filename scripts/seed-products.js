@@ -1,25 +1,25 @@
 const mongoose = require('mongoose')
 
-const MONGODB_URI = 'mongodb://localhost:27017/aqua_market'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/aqua_market'
 
 // Product Schema
 const ProductSchema = new mongoose.Schema({
-  name: String,
-  scientificName: String,
-  category: String,
-  price: Number,
-  stock: Number,
-  status: String,
-  image: String,
-  description: String,
-  temperature: String,
-  pH: String,
-  tankSize: String,
-  maxSize: String,
-  diet: String,
-  temperament: String,
-  rating: Number,
-  reviews: Number,
+  name: { type: String, required: true },
+  scientificName: { type: String, default: '' },
+  category: { type: String, required: true },
+  price: { type: Number, required: true },
+  stock: { type: Number, default: 0 },
+  status: { type: String, default: 'Active' },
+  image: { type: String, default: '' },
+  description: { type: String, default: '' },
+  temperature: { type: String, default: '' },
+  pH: { type: String, default: '' },
+  tankSize: { type: String, default: '' },
+  maxSize: { type: String, default: '' },
+  diet: { type: String, default: '' },
+  temperament: { type: String, default: '' },
+  rating: { type: Number, default: 0 },
+  reviews: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
 })
 
@@ -134,10 +134,66 @@ const products = [
     rating: 4.7,
     reviews: 56,
   },
+  {
+    name: 'Gold Gourami',
+    scientificName: 'Trichopodus trichopterus',
+    category: 'Freshwater',
+    price: 1200,
+    stock: 5,
+    status: 'Active',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJQ9enrBEegWIXDDnCcDYs9dz-ffsQfxya9dtUjOkpxFjwWuUt6cQvmOPCoXIxQoIhVnvFQZNHmq3ZAlcYTn3SsULr9YALwHOXoJkNWnvnivUdPD3Y7V0a1jRzQcEfmDChwHSiMY7qNhxYu9pg45mTgdUNuY4g-v2MjEJsAhp3HWQLdSqhiuIjz4ZotqGDMTvzEyw1cRkUEBNDdQ4F_rXrvoetxc9KexmdVDPWsrtyJIG1NqOuutZk',
+    description: 'A beautiful golden variation of the three-spot gourami.',
+    temperature: '72-82°F',
+    pH: '6.5-7.5',
+    tankSize: '30',
+    maxSize: '5',
+    diet: 'Omnivore',
+    temperament: 'Semi-Aggressive',
+    rating: 4.4,
+    reviews: 42,
+  },
+  {
+    name: 'Blue Gourami',
+    scientificName: 'Trichopodus trichopterus',
+    category: 'Freshwater',
+    price: 1000,
+    stock: 0,
+    status: 'Out of Stock',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBT15SM1KmOegXrXqqxFtapb9hNrPi0ngyiFwXYqEzhKfAnqBl8WNyRYWwv3eVtCgdPWvnnbu7QKnDzv8AGG2_65PzUSUmQO7i8JWIXqdFNvr5gkP21Sw91Wa-OWHb2KvzTovq9VMWdevaYkpVr41_1bZ7wWevvx3ywocELhlTFMR4QFUQP0n3WImndIDJjzcWQVyKolbe31rBTvhV2vfCgxIQmN0oZMefadEvYDhtc58AVNLEvAn4v',
+    description: 'A classic gourami with stunning blue coloration and peaceful demeanor.',
+    temperature: '72-82°F',
+    pH: '6.5-7.5',
+    tankSize: '30',
+    maxSize: '5',
+    diet: 'Omnivore',
+    temperament: 'Semi-Aggressive',
+    rating: 4.5,
+    reviews: 78,
+  },
+  {
+    name: 'Honey Gourami',
+    scientificName: 'Trichogaster chuna',
+    category: 'Freshwater',
+    price: 1200,
+    stock: 12,
+    status: 'Active',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhQEI5Pgp9XsfF_5ULnCU3ptlulRAYCeukAFOqmlo_sSq7dgIaklHQiKMS18IUiUTBxKiXEm-9bKal9dtJeWyiZsiXPpuoYb6yNl9qjFqypVAopzxh8u9cEP0BUOZ5_j-I5F2IAJ1hKwtiAGfuBzS5G0t3scX6qoYO9qfzTkZr7h0io2LxOr_opyyEr_MvzpaezwzsU2HwO9V-A6uFsFwAZYzyy_3vnP4h_PNV3L1eW-mlF6F_YHB4',
+    description: 'A small, peaceful gourami with beautiful golden-yellow coloration.',
+    temperature: '72-82°F',
+    pH: '6.0-7.5',
+    tankSize: '10',
+    maxSize: '2',
+    diet: 'Omnivore',
+    temperament: 'Peaceful',
+    rating: 4.6,
+    reviews: 34,
+  },
 ]
 
 async function seedProducts() {
   try {
+    console.log('Connecting to MongoDB...')
+    // Remove deprecated options
     await mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB')
 
@@ -150,9 +206,16 @@ async function seedProducts() {
     }
 
     console.log(`\n✅ ${products.length} products seeded successfully!`)
+    console.log('\n📊 Product Categories:')
+    const categories = [...new Set(products.map(p => p.category))]
+    categories.forEach(cat => {
+      const count = products.filter(p => p.category === cat).length
+      console.log(`  - ${cat}: ${count} products`)
+    })
+    
     process.exit(0)
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error('❌ Error seeding products:', error)
     process.exit(1)
   }
 }

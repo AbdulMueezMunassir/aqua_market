@@ -7,6 +7,7 @@ interface WishlistStore {
   removeItem: (id: string) => void
   toggleItem: (id: string) => void
   isInWishlist: (id: string) => boolean
+  clearWishlist: () => void
 }
 
 export const useWishlistStore = create<WishlistStore>()(
@@ -14,19 +15,20 @@ export const useWishlistStore = create<WishlistStore>()(
     (set, get) => ({
       items: [],
       
-      addItem: (id) => {
-        set((state) => ({
-          items: [...state.items, id]
-        }))
+      addItem: (id: string) => {
+        const { items } = get()
+        if (!items.includes(id)) {
+          set({ items: [...items, id] })
+        }
       },
       
-      removeItem: (id) => {
+      removeItem: (id: string) => {
         set((state) => ({
           items: state.items.filter(item => item !== id)
         }))
       },
       
-      toggleItem: (id) => {
+      toggleItem: (id: string) => {
         const { items } = get()
         if (items.includes(id)) {
           set({ items: items.filter(item => item !== id) })
@@ -35,12 +37,33 @@ export const useWishlistStore = create<WishlistStore>()(
         }
       },
       
-      isInWishlist: (id) => {
+      isInWishlist: (id: string) => {
         return get().items.includes(id)
+      },
+      
+      clearWishlist: () => {
+        set({ items: [] })
       }
     }),
     {
-      name: 'aqua-market-wishlist'
+      name: 'aqua-market-wishlist',
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name)
+          if (!str) return null
+          try {
+            return JSON.parse(str)
+          } catch {
+            return null
+          }
+        },
+        setItem: (name, value) => {
+          localStorage.setItem(name, JSON.stringify(value))
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name)
+        }
+      }
     }
   )
 )
