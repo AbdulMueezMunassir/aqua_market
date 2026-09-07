@@ -5,6 +5,7 @@ import { useCartStore } from '@/store/cartStore'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PayHereCheckout } from '@/components/payment/PayHereCheckout'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -12,7 +13,7 @@ export default function CheckoutPage() {
   const { items, getTotalPrice, getTotalItems, clearCart } = useCartStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [orderCreated, setOrderCreated] = useState(false)
   const [orderId, setOrderId] = useState('')
   const [formData, setFormData] = useState({
     phone: '',
@@ -20,24 +21,19 @@ export default function CheckoutPage() {
     city: '',
     state: '',
     zipCode: '',
-    paymentMethod: 'cod',
+    paymentMethod: 'payhere',
     notes: '',
   })
 
   useEffect(() => {
-    // Redirect if not authenticated
     if (!isAuthenticated) {
       router.push('/auth/login')
       return
     }
-
-    // Redirect if cart is empty
     if (items.length === 0) {
       router.push('/cart')
       return
     }
-
-    // Pre-fill user data
     if (user) {
       setFormData(prev => ({
         ...prev,
@@ -56,10 +52,9 @@ export default function CheckoutPage() {
   const tax = subtotal * 0.15
   const total = subtotal + deliveryFee + tax
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+  const createOrder = async () => {
     setLoading(true)
+    setError('')
 
     try {
       const orderData = {
@@ -97,43 +92,88 @@ export default function CheckoutPage() {
 
       const data = await response.json()
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order')
+        throw new Error(data.error || 'Failed to create order')
       }
 
       setOrderId(data.orderId)
-      setSuccess(true)
-      clearCart()
-      
-      // Redirect after 3 seconds
-      setTimeout(() => {
-        router.push('/orders')
-      }, 3000)
+      setOrderCreated(true)
+      return data.orderId
     } catch (error: any) {
-      setError(error.message || 'Failed to place order')
+      setError(error.message || 'Failed to create order')
+      return null
     } finally {
       setLoading(false)
     }
   }
 
-  if (success) {
+  const handlePaymentSuccess = () => {
+    clearCart()
+    router.push(`/order-success?orderId=${orderId}`)
+  }
+
+  const handlePaymentError = (errorMsg: string) => {
+    setError(errorMsg)
+  }
+
+  const handlePlaceOrder = async () => {
+    const newOrderId = await createOrder()
+    if (newOrderId) {
+      // Order created, now proceed with payment
+      // The PayHereCheckout component will handle the payment
+    }
+  }
+
+  if (orderCreated) {
     return (
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
-        <div className="glass-panel rounded-2xl p-12 text-center max-w-2xl mx-auto">
-          <div className="w-20 h-20 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="glass-panel rounded-2xl p-8">
+              <h2 className="font-headline-md text-headline-md mb-6">Complete Payment</h2>
+              <p className="text-on-surface-variant mb-6">
+                Order #{orderId} - Total: LKR {total.toLocaleString()}
+              </p>
+              
+              <PayHereCheckout
+                orderId={orderId}
+                amount={total}
+                customer={{
+                  firstName: user?.name?.split(' ')[0] || '',
+                  lastName: user?.name?.split(' ')[1] || '',
+                  email: user?.email || '',
+                  phone: formData.phone,
+                  address: formData.address,
+                  city: formData.city,
+                }}
+                items={items.map(item => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                }))}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+              />
+            </div>
           </div>
-          <h2 className="font-display-lg-mobile text-display-lg-mobile mb-4">Order Placed Successfully!</h2>
-          <p className="text-on-surface-variant mb-2">Order ID: <span className="font-medium text-primary">{orderId}</span></p>
-          <p className="text-on-surface-variant mb-8">Thank you for your order! We'll send you a confirmation email shortly.</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/orders" className="btn-primary">
-              View Orders
-            </Link>
-            <Link href="/shop" className="glass-panel px-6 py-3 rounded-xl text-primary hover:bg-white/50 transition-colors">
-              Continue Shopping
-            </Link>
+          
+          <div className="lg:col-span-1">
+            <div className="glass-panel rounded-2xl p-6 sticky top-32">
+              <h3 className="font-headline-md text-headline-md mb-4">Order Summary</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+                {items.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span>LKR {(item.price * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-outline-variant/30 pt-4">
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-primary">LKR {total.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -150,9 +190,8 @@ export default function CheckoutPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Checkout Form */}
         <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-8">
+          <div className="glass-panel rounded-2xl p-8">
             <h2 className="font-headline-md text-headline-md mb-6">Delivery Information</h2>
 
             {error && (
@@ -198,6 +237,7 @@ export default function CheckoutPage() {
                   className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="0712345678"
                 />
               </div>
 
@@ -231,11 +271,10 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    State *
+                    District
                   </label>
                   <input
                     type="text"
-                    required
                     name="state"
                     className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                     value={formData.state}
@@ -244,33 +283,16 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                    ZIP Code *
+                    Postal Code
                   </label>
                   <input
                     type="text"
-                    required
                     name="zipCode"
                     className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
                     value={formData.zipCode}
                     onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-on-surface-variant mb-1">
-                  Payment Method
-                </label>
-                <select
-                  name="paymentMethod"
-                  className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
-                  value={formData.paymentMethod}
-                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                >
-                  <option value="cod">Cash on Delivery</option>
-                  <option value="card">Credit / Debit Card</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
               </div>
 
               <div>
@@ -296,21 +318,20 @@ export default function CheckoutPage() {
                 Back to Cart
               </Link>
               <button
-                type="submit"
+                onClick={handlePlaceOrder}
                 disabled={loading}
                 className="flex-1 btn-primary justify-center py-3"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  `Place Order · LKR ${total.toLocaleString()}`
+                  `Proceed to Payment · LKR ${total.toLocaleString()}`
                 )}
               </button>
             </div>
-          </form>
+          </div>
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="glass-panel rounded-2xl p-6 sticky top-32">
             <h3 className="font-headline-md text-headline-md mb-4">Order Summary</h3>

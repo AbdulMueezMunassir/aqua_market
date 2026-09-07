@@ -12,52 +12,28 @@ interface Product {
   image: string
   temperature?: string
   temperament?: string
-  stock?: number
-  status?: string
+  stock: number
+  status: string
 }
 
-export function ProductGrid() {
+export function ProductGrid({ limit = 8 }: { limit?: number }) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, [limit])
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products?limit=8')
+      const response = await fetch(`/api/products?limit=${limit}&sort=-createdAt`)
+      if (!response.ok) throw new Error('Failed to fetch products')
       const data = await response.json()
       setProducts(data.products || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching products:', error)
-      // Fallback to sample data
-      setProducts([
-        {
-          _id: '1',
-          name: 'Dwarf Gourami',
-          category: 'Gourami',
-          price: 1200,
-          rating: 4.8,
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBf_iQ31_Ymd1Vi7bzqCc31JKpj4HaRizJhJ_BNFR-zBvXN5awpm_NimtAqzp9ZJ0W2rF4JppkvA_CQglMT4yPZGzwDbnZgau5yma4NHrExCIn4B3XTgul56kGT29ygaMt3IJLifsMYdtj6vnk-FNODJg9sWdAM5hohXhUO9OTv4mbK8yFeOkWLqcEvZOyTBEkcB0TNxYQZuUuLsXU4wyS8HvAp1oqMLTSJClIr09YTxvZR7DJLI9nB',
-          temperature: '72-82°F',
-          temperament: 'Peaceful',
-          stock: 10,
-          status: 'Active'
-        },
-        {
-          _id: '2',
-          name: 'Neon Tetra (School of 6)',
-          category: 'Tetra',
-          price: 1800,
-          rating: 4.9,
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDdigo_xLo_nqqSOkh7Jrh--65-heJgz3GKbuHg7mXlk_RSH7rLtDGlqKWoGNGW0ff2DgoZNw2TcCg_Zxo0b2jXip3s6fvvOFkPIoLZkSgYK9-lByA-Q6ZgsnH9Q9XccQKOrQSgb63QE4m3kCAD05hqIR6GJ5GU-GfcOFkw-S3QC1Bs_Wdt4mV25IFDdxZ-UIsXu5xTnhrk4W_TJDW-wdb5-5Wf4TKUwjdRGkl5uzAMLgaIiMipTbA7',
-          temperature: '70-81°F',
-          temperament: 'Peaceful',
-          stock: 20,
-          status: 'Active'
-        }
-      ])
+      setError(error.message)
     } finally {
       setLoading(false)
     }
@@ -69,6 +45,25 @@ export function ProductGrid() {
         {[...Array(4)].map((_, i) => (
           <div key={i} className="glass-panel rounded-xl h-80 animate-pulse bg-surface-container-high" />
         ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="glass-panel rounded-2xl p-8 text-center">
+        <p className="text-error">Error loading products: {error}</p>
+        <button onClick={fetchProducts} className="btn-primary mt-4">
+          Try Again
+        </button>
+      </div>
+    )
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-on-surface-variant">No products available yet.</p>
       </div>
     )
   }

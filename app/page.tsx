@@ -1,37 +1,43 @@
 import Link from 'next/link'
 import { ProductGrid } from '@/components/marketplace/ProductGrid'
-import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/Skeleton'
 
 export default function HomePage() {
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative h-[80vh] min-h-[600px] w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop pt-8 pb-16 flex items-center justify-center">
+      {/* Hero Section - Updated with Discus/Planted Tank Image */}
+      <section className="relative h-[85vh] min-h-[600px] w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop pt-8 pb-16 flex items-center justify-center">
         <div className="absolute inset-x-margin-mobile md:inset-x-margin-desktop top-8 bottom-16 rounded-[40px] overflow-hidden shadow-2xl shadow-primary/10">
+          {/* Beautiful Discus/Planted Tank Background */}
           <div 
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{ 
-              backgroundImage: "url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1600&h=800&fit=crop')",
+              backgroundImage: "url('https://th.bing.com/th/id/OIP.0wWkz7kQ0wP4t72IsvQjKwHaG7?w=184&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3')",
               backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center 30%'
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-surface/95 via-surface/70 to-transparent" />
+          {/* Gradient Overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-surface/95 via-surface/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/30" />
         </div>
         
         <div className="relative z-10 w-full max-w-container-max mx-auto px-8 md:px-16 flex flex-col items-start justify-center h-full">
           <div className="glass-panel p-8 md:p-12 rounded-[32px] max-w-2xl transform transition-transform hover:scale-[1.01] duration-500">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm mb-6 border border-primary/20 backdrop-blur-sm">
-              Premium Selection
-            </span>
-            <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-6 leading-tight">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm border border-primary/20 backdrop-blur-sm">
+                🌿 Premium Selection
+              </span>
+              <span className="inline-block px-3 py-1 rounded-full bg-secondary/10 text-secondary font-label-sm text-label-sm border border-secondary/20 backdrop-blur-sm">
+                🐠 Healthy Fish
+              </span>
+            </div>
+            <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-4 leading-tight">
               Discover Your Next <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
                 Aquarium Favorite
               </span>
             </h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-xl">
+            <p className="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-xl leading-relaxed">
               Healthy aquarium fish, carefully selected for your tank. Experience unmatched quality 
               and clarity with our premium livestock.
             </p>
@@ -50,23 +56,87 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Featured Products Section */}
       <section className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="font-headline-md text-headline-md text-on-surface">Featured Products</h2>
-          <Link href="/shop" className="text-primary hover:underline font-label-sm">
-            View All →
+          <div>
+            <h2 className="font-headline-md text-headline-md text-on-surface">
+              Featured Products
+            </h2>
+            <p className="text-on-surface-variant text-sm mt-1">
+              Handpicked premium aquatic species for your aquarium
+            </p>
+          </div>
+          <Link href="/shop" className="text-primary hover:underline font-label-sm flex items-center gap-1">
+            View All 
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
           </Link>
         </div>
-        <Suspense fallback={
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-80 rounded-xl" />
-            ))}
+        <ProductGrid />
+      </section>
+
+      {/* Features Section */}
+      <section className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16 border-t border-outline-variant/30">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="glass-panel rounded-2xl p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🐟</span>
+            </div>
+            <h3 className="font-headline-md text-headline-md mb-2">Premium Quality</h3>
+            <p className="text-on-surface-variant text-sm">
+              All our fish are carefully selected from trusted breeders
+            </p>
           </div>
-        }>
-          <ProductGrid />
-        </Suspense>
+          
+          <div className="glass-panel rounded-2xl p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🚚</span>
+            </div>
+            <h3 className="font-headline-md text-headline-md mb-2">Live Delivery</h3>
+            <p className="text-on-surface-variant text-sm">
+              Safe and secure shipping with live arrival guarantee
+            </p>
+          </div>
+          
+          <div className="glass-panel rounded-2xl p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 rounded-full bg-tertiary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">💎</span>
+            </div>
+            <h3 className="font-headline-md text-headline-md mb-2">Expert Support</h3>
+            <p className="text-on-surface-variant text-sm">
+              Our team of aquarists is here to help you succeed
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pb-20">
+        <div className="relative rounded-3xl overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ 
+              backgroundImage: "url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&h=400&fit=crop')",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90" />
+          <div className="relative z-10 p-8 md:p-16 text-center text-white">
+            <h2 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg mb-4">
+              Ready to Start Your Aquarium Journey?
+            </h2>
+            <p className="text-lg opacity-90 max-w-2xl mx-auto mb-8">
+              Join thousands of happy aquarists who trust Aqua Market for their aquatic needs
+            </p>
+            <Link href="/shop" className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-label-sm hover:shadow-lg transition-all hover:scale-105">
+              Start Shopping Now
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
+        </div>
       </section>
     </>
   )
