@@ -5,11 +5,11 @@ import { useCartStore } from '@/store/cartStore'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PayHereCheckout } from '@/components/payment/PayHereCheckout'
+import { StripePayment } from '@/components/payment/StripePayment'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { user, token, isAuthenticated } = useAuth()
+  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth()
   const { items, getTotalPrice, getTotalItems, clearCart } = useCartStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -21,19 +21,28 @@ export default function CheckoutPage() {
     city: '',
     state: '',
     zipCode: '',
-    paymentMethod: 'payhere',
+    paymentMethod: 'mock',
     notes: '',
   })
 
+  // Check authentication and cart
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) return
+
+    // If not authenticated, redirect to login
     if (!isAuthenticated) {
       router.push('/auth/login')
       return
     }
+
+    // If cart is empty, redirect to shop
     if (items.length === 0) {
-      router.push('/cart')
+      router.push('/shop')
       return
     }
+
+    // Pre-fill user data
     if (user) {
       setFormData(prev => ({
         ...prev,
@@ -44,7 +53,7 @@ export default function CheckoutPage() {
         zipCode: user.zipCode || '',
       }))
     }
-  }, [isAuthenticated, user, items, router])
+  }, [authLoading, isAuthenticated, user, items, router])
 
   const subtotal = getTotalPrice()
   const totalItems = getTotalItems()
@@ -108,50 +117,104 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = () => {
     clearCart()
-    router.push(`/order-success?orderId=${orderId}`)
+    router.push(`/order-success?orderId=${orderId}&stripe=true`)
   }
 
   const handlePaymentError = (errorMsg: string) => {
     setError(errorMsg)
   }
 
-  const handlePlaceOrder = async () => {
+  const handlePaymentCancel = () => {
+    setOrderCreated(false)
+    setFormData({ ...formData, paymentMethod: '' })
+  }
+
+  // Handle proceed to payment
+  const handleProceedToPayment = async () => {
+    // Validate form
+    if (!formData.phone) {
+      setError('Please enter your phone number')
+      return
+    }
+    if (!formData.address) {
+      setError('Please enter your address')
+      return
+    }
+    if (!formData.city) {
+      setError('Please enter your city')
+      return
+    }
+
     const newOrderId = await createOrder()
     if (newOrderId) {
-      // Order created, now proceed with payment
-      // The PayHereCheckout component will handle the payment
+      if (formData.paymentMethod === 'mock') {
+        router.push(`/mock-payment/${newOrderId}`)
+      } else if (formData.paymentMethod === 'stripe') {
+        setOrderCreated(true)
+      } else {
+        setOrderCreated(true) // PayHere flow
+      }
     }
   }
 
-  if (orderCreated) {
+  // Show loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // If user is not authenticated (after loading), show login prompt
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-margin-mobile">
+        <div className="glass-panel rounded-2xl p-8 max-w-md text-center">
+          <h2 className="font-headline-md text-headline-md mb-4">Please Login</h2>
+          <p className="text-on-surface-variant mb-6">You need to be logged in to checkout.</p>
+          <Link href="/auth/login" className="btn-primary inline-flex">
+            Login Now
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // If cart is empty, show empty state
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-margin-mobile">
+        <div className="glass-panel rounded-2xl p-8 max-w-md text-center">
+          <h2 className="font-headline-md text-headline-md mb-4">Your Cart is Empty</h2>
+          <p className="text-on-surface-variant mb-6">Add some products to your cart before checking out.</p>
+          <Link href="/shop" className="btn-primary inline-flex">
+            Start Shopping
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Show Stripe payment
+  if (orderCreated && formData.paymentMethod === 'stripe') {
     return (
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="glass-panel rounded-2xl p-8">
-              <h2 className="font-headline-md text-headline-md mb-6">Complete Payment</h2>
+              <h2 className="font-headline-md text-headline-md mb-4">Card Payment</h2>
               <p className="text-on-surface-variant mb-6">
-                Order #{orderId} - Total: LKR {total.toLocaleString()}
+                Order #{orderId} · LKR {total.toLocaleString()}
               </p>
               
-              <PayHereCheckout
-                orderId={orderId}
+              <StripePayment
                 amount={total}
-                customer={{
-                  firstName: user?.name?.split(' ')[0] || '',
-                  lastName: user?.name?.split(' ')[1] || '',
-                  email: user?.email || '',
-                  phone: formData.phone,
-                  address: formData.address,
-                  city: formData.city,
-                }}
-                items={items.map(item => ({
-                  name: item.name,
-                  quantity: item.quantity,
-                  price: item.price,
-                }))}
+                orderId={orderId}
+                customerEmail={user?.email || ''}
                 onSuccess={handlePaymentSuccess}
                 onError={handlePaymentError}
+                onCancel={handlePaymentCancel}
               />
             </div>
           </div>
@@ -180,6 +243,59 @@ export default function CheckoutPage() {
     )
   }
 
+  // Show PayHere payment
+  if (orderCreated && formData.paymentMethod === 'payhere') {
+    return (
+      <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="glass-panel rounded-2xl p-8">
+              <h2 className="font-headline-md text-headline-md mb-4">PayHere Payment</h2>
+              <p className="text-on-surface-variant mb-6">
+                Order #{orderId} · LKR {total.toLocaleString()}
+              </p>
+              
+              {/* PayHere will be shown here */}
+              <div className="bg-yellow-500/10 p-4 rounded-lg text-center">
+                <p className="text-yellow-600">PayHere integration ready!</p>
+                <button
+                  onClick={() => {
+                    router.push(`/order-success?orderId=${orderId}`)
+                    clearCart()
+                  }}
+                  className="btn-primary mt-4 inline-flex"
+                >
+                  Simulate Payment Success
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="lg:col-span-1">
+            <div className="glass-panel rounded-2xl p-6 sticky top-32">
+              <h3 className="font-headline-md text-headline-md mb-4">Order Summary</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+                {items.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span>LKR {(item.price * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-outline-variant/30 pt-4">
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-primary">LKR {total.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Main Checkout Form
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
       <div className="mb-8">
@@ -295,6 +411,68 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-on-surface-variant mb-2">
+                  Payment Method
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-4 border border-outline-variant/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="stripe"
+                      checked={formData.paymentMethod === 'stripe'}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <div>
+                      <span className="font-medium">💳 Credit/Debit Card</span>
+                      <p className="text-xs text-on-surface-variant">Pay with Stripe (Practice mode)</p>
+                    </div>
+                    <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                      Test
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-4 border border-outline-variant/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="payhere"
+                      checked={formData.paymentMethod === 'payhere'}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <div>
+                      <span className="font-medium">🏦 PayHere</span>
+                      <p className="text-xs text-on-surface-variant">Sri Lankan payment gateway</p>
+                    </div>
+                    <span className="ml-auto text-xs bg-yellow-500/10 text-yellow-600 px-2 py-1 rounded-full">
+                      Coming Soon
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-4 border border-primary/50 rounded-lg bg-primary/5 cursor-pointer hover:border-primary transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="mock"
+                      checked={formData.paymentMethod === 'mock'}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="w-4 h-4 text-primary"
+                    />
+                    <div>
+                      <span className="font-medium">🧪 Mock Payment</span>
+                      <p className="text-xs text-on-surface-variant">No real money charged - For testing</p>
+                    </div>
+                    <span className="ml-auto text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full">
+                      Practice
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">
                   Order Notes (Optional)
@@ -318,7 +496,7 @@ export default function CheckoutPage() {
                 Back to Cart
               </Link>
               <button
-                onClick={handlePlaceOrder}
+                onClick={handleProceedToPayment}
                 disabled={loading}
                 className="flex-1 btn-primary justify-center py-3"
               >
@@ -363,6 +541,23 @@ export default function CheckoutPage() {
                 <span className="text-primary">LKR {total.toLocaleString()}</span>
               </div>
             </div>
+
+            {/* Test Cards Info */}
+            {formData.paymentMethod === 'stripe' && (
+              <div className="mt-4 p-3 bg-surface-container-low rounded-lg border border-outline-variant/30">
+                <p className="text-xs text-on-surface-variant font-medium mb-2">🧪 Test Cards:</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-on-surface-variant">✅ Success</span>
+                    <span className="font-mono">4242 4242 4242 4242</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-on-surface-variant">❌ Declined</span>
+                    <span className="font-mono">4000 0000 0000 0002</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
