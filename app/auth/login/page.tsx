@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@aquamarket.com')
@@ -12,15 +12,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams.get('redirect') || '/'
 
   // Redirect if already authenticated
   useEffect(() => {
     console.log('🔍 Login page - Auth state:', { isAuthenticated, authLoading })
     if (!authLoading && isAuthenticated) {
-      console.log('✅ Already authenticated, redirecting to home...')
-      router.push('/')
+      console.log('✅ Already authenticated, redirecting to:', redirectPath)
+      router.push(redirectPath)
     }
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading, router, redirectPath])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -8,6 +8,7 @@ export default function OrderSuccessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const orderId = searchParams.get('orderId')
+  const isMock = searchParams.get('mock') === 'true'
 
   useEffect(() => {
     if (!orderId) {
@@ -24,6 +25,13 @@ export default function OrderSuccessPage() {
           </svg>
         </div>
         <h1 className="font-display-lg-mobile text-display-lg-mobile mb-4">Order Placed Successfully! 🎉</h1>
+        
+        {isMock && (
+          <div className="bg-yellow-500/10 text-yellow-600 p-3 rounded-lg mb-4 text-sm border border-yellow-500/20">
+            🧪 This was a mock payment for practice. No real money was charged.
+          </div>
+        )}
+        
         <p className="text-on-surface-variant mb-2">
           Thank you for your order! Your order has been confirmed.
         </p>
