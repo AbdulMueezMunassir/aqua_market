@@ -27,27 +27,23 @@ export function TopNavBar() {
 
   const totalItems = mounted ? getTotalItems() : 0
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      window.location.href = `/shop?search=${encodeURIComponent(searchQuery)}`
-    }
+  // Don't show on auth pages
+  if (pathname === '/auth/login' || pathname === '/auth/register') {
+    return null
   }
 
   return (
     <header className="fixed top-0 w-full z-50 bg-surface/60 dark:bg-inverse-surface/60 backdrop-blur-[40px] border-b border-white/20 dark:border-white/10 shadow-sm shadow-tertiary/5 hidden md:block transition-all duration-300">
       <div className="flex justify-between items-center px-margin-desktop py-4 max-w-container-max mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-lg">
-              A
-            </div>
-            <span className="font-display-lg text-headline-md text-primary dark:text-primary-fixed-dim tracking-tight">
-              Aqua Market
-            </span>
-          </Link>
-        </div>
+        <Link href="/" className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-lg">
+            A
+          </div>
+          <span className="font-display-lg text-headline-md text-primary dark:text-primary-fixed-dim tracking-tight">
+            Aqua Market
+          </span>
+        </Link>
 
         {/* Navigation */}
         <nav className="flex items-center gap-8">
@@ -74,7 +70,15 @@ export function TopNavBar() {
         {/* Right Section */}
         <div className="flex items-center gap-6">
           {/* Search */}
-          <form onSubmit={handleSearch} className="relative bg-surface-container-low rounded-full px-4 py-2 flex items-center gap-2 border border-outline-variant/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (searchQuery.trim()) {
+                window.location.href = `/shop?search=${encodeURIComponent(searchQuery)}`
+              }
+            }} 
+            className="relative bg-surface-container-low rounded-full px-4 py-2 flex items-center gap-2 border border-outline-variant/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-outline">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
@@ -116,15 +120,16 @@ export function TopNavBar() {
             </svg>
           </button>
           
-          {/* Auth Section */}
-          {isAuthenticated ? (
+          {/* Profile Section */}
+          {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <Link href="/profile">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95">
-                  <span className="text-primary font-semibold text-sm">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
+              <Link 
+                href="/profile" 
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95 hover:shadow-md transition-all"
+              >
+                <span className="text-primary font-semibold text-sm">
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
               </Link>
               <button
                 onClick={logout}

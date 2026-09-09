@@ -30,15 +30,14 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      // The login function handles redirect
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.')
+      console.error('Login error:', err)
+      setError(err.message || 'Login failed. Please check your credentials.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Show loading state
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -50,9 +49,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-margin-mobile py-12">
       <div className="w-full max-w-md">
-        <div className="glass-panel rounded-2xl p-8 shadow-xl">
-          <div className="text-center mb-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+        <div className="relative glass-panel rounded-2xl p-8 shadow-xl backdrop-blur-2xl bg-white/70 border border-white/40">
+          <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-primary/10 blur-2xl" />
+          <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-secondary/10 blur-2xl" />
+          
+          <div className="text-center mb-8 relative">
+            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 shadow-lg shadow-primary/20">
               A
             </div>
             <h1 className="font-display-lg-mobile text-display-lg-mobile text-primary">
@@ -64,12 +66,13 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20">
-              {error}
+            <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20 flex items-start gap-2">
+              <span className="text-lg">❌</span>
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 relative">
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-2">
                 Email Address
@@ -77,7 +80,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -91,7 +94,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -101,23 +104,26 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary justify-center py-3"
+              className="w-full btn-primary justify-center py-3 text-base relative overflow-hidden group"
             >
-              {isLoading ? (
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                'Sign In'
-              )}
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </span>
+              <span className="absolute inset-0 bg-gradient-to-r from-primary to-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-on-surface-variant">
               Don't have an account?{' '}
-              <Link href="/auth/register" className="text-primary hover:underline font-medium">
+              <Link href="/auth/register" className="text-primary hover:underline font-medium transition-colors">
                 Sign up
               </Link>
             </p>
@@ -126,9 +132,9 @@ export default function LoginPage() {
           <div className="mt-8 pt-6 border-t border-outline-variant/30">
             <div className="text-xs text-on-surface-variant/70 text-center space-y-1">
               <p className="font-medium text-on-surface-variant">Demo Accounts:</p>
-              <p>Admin: admin@aquamarket.com / admin123</p>
-              <p>Staff: staff@aquamarket.com / staff123</p>
-              <p>Customer: customer@aquamarket.com / customer123</p>
+              <p className="font-mono text-xs">Admin: admin@aquamarket.com / admin123</p>
+              <p className="font-mono text-xs">Staff: staff@aquamarket.com / staff123</p>
+              <p className="font-mono text-xs">Customer: customer@aquamarket.com / customer123</p>
             </div>
           </div>
         </div>

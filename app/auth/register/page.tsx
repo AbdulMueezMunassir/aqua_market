@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -12,15 +12,22 @@ export default function RegisterPage() {
     confirmPassword: '',
   })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { register } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+    if (!formData.name.trim()) {
+      setError('Full name is required')
+      return
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email is required')
       return
     }
 
@@ -29,13 +36,36 @@ export default function RegisterPage() {
       return
     }
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
     setIsLoading(true)
+
     try {
-      await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
       })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed')
+      }
+
+      setSuccess('Account created successfully! Redirecting to login...')
+      setTimeout(() => {
+        router.push('/auth/login?registered=true')
+      }, 2000)
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {
@@ -46,9 +76,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-margin-mobile py-12">
       <div className="w-full max-w-md">
-        <div className="glass-panel rounded-2xl p-8 shadow-xl">
-          <div className="text-center mb-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+        <div className="relative glass-panel rounded-2xl p-8 shadow-xl backdrop-blur-2xl bg-white/70 border border-white/40">
+          <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-primary/10 blur-2xl" />
+          <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-secondary/10 blur-2xl" />
+          
+          <div className="text-center mb-8 relative">
+            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 shadow-lg shadow-primary/20">
               A
             </div>
             <h1 className="font-display-lg-mobile text-display-lg-mobile text-primary">
@@ -59,21 +92,29 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {error && (
-            <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm">
-              {error}
+          {success && (
+            <div className="bg-green-500/10 text-green-600 p-3 rounded-lg mb-6 text-sm border border-green-500/20 flex items-start gap-2">
+              <span className="text-lg">✅</span>
+              <span>{success}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20 flex items-start gap-2">
+              <span className="text-lg">❌</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5 relative">
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-2">
-                Full Name
+                Full Name *
               </label>
               <input
                 type="text"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="John Doe"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -82,12 +123,12 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-2">
-                Email Address
+                Email Address *
               </label>
               <input
                 type="email"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -96,13 +137,13 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-2">
-                Password
+                Password *
               </label>
               <input
                 type="password"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
-                placeholder="••••••••"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
+                placeholder="Min 6 characters"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
@@ -110,13 +151,13 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-2">
-                Confirm Password
+                Confirm Password *
               </label>
               <input
                 type="password"
                 required
-                className="w-full bg-surface-container-low rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
-                placeholder="••••••••"
+                className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
+                placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               />
@@ -125,20 +166,26 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary justify-center py-3"
+              className="w-full btn-primary justify-center py-3 text-base relative overflow-hidden group"
             >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                'Create Account'
-              )}
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Creating account...</span>
+                  </>
+                ) : (
+                  'Create Account'
+                )}
+              </span>
+              <span className="absolute inset-0 bg-gradient-to-r from-primary to-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-on-surface-variant">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-primary hover:underline font-medium">
+              <Link href="/auth/login" className="text-primary hover:underline font-medium transition-colors">
                 Sign in
               </Link>
             </p>

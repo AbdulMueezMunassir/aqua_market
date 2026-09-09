@@ -75,3 +75,30 @@
 .image-container:hover img {
   transform: scale(1.05);
 }
+
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 4s ease infinite;
+}
+
+/* Hero image hover effect */
+.hero-image-container {
+  transition: transform 0.7s ease;
+}
+
+.hero-image-container:hover {
+  transform: scale(1.05);
+}

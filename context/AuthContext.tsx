@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check localStorage for token
     const savedToken = localStorage.getItem('auth_token')
     const savedUser = localStorage.getItem('auth_user')
     
@@ -45,14 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsedUser = JSON.parse(savedUser)
         setUser(parsedUser)
         setToken(savedToken)
-        console.log('✅ User restored from localStorage:', parsedUser.email)
+        console.log('✅ User restored:', parsedUser.email)
       } catch (error) {
-        console.error('Error parsing user data:', error)
+        console.error('Error parsing user:', error)
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
       }
-    } else {
-      console.log('ℹ️ No auth data found in localStorage')
     }
     setIsLoading(false)
   }, [])
@@ -60,13 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      console.log('🔐 Attempting login for:', email)
-      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
 
@@ -76,16 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'Login failed')
       }
 
-      // Save to localStorage
       localStorage.setItem('auth_token', data.token)
       localStorage.setItem('auth_user', JSON.stringify(data.user))
       
       setUser(data.user)
       setToken(data.token)
 
-      console.log('✅ Login successful for:', data.user.email, 'Role:', data.user.role)
-
-      // Redirect based on role
       if (data.user.role === 'admin') {
         router.push('/admin')
       } else if (data.user.role === 'staff') {
@@ -94,34 +83,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/')
       }
     } catch (error: any) {
-      console.error('❌ Login error:', error)
       throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-    setUser(null)
-    setToken(null)
-    router.push('/auth/login')
+  const logout = async () => {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' })
+  } catch (error) {
+    console.error('Logout error:', error)
   }
-
-  const value = {
-    user,
-    token,
-    isLoading,
-    login,
-    logout,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isStaff: user?.role === 'staff' || user?.role === 'admin',
-  }
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('auth_user')
+  setUser(null)
+  setToken(null)
+  router.push('/auth/login')
+}
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      isLoading,
+      login,
+      logout,
+      isAuthenticated: !!user,
+      isAdmin: user?.role === 'admin',
+      isStaff: user?.role === 'staff' || user?.role === 'admin',
+    }}>
       {children}
     </AuthContext.Provider>
   )

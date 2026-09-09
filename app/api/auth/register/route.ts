@@ -1,26 +1,24 @@
 import { NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/mongodb'
 import User from '@/models/User'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: Request) {
   try {
     await connectToDatabase()
-    
-    let body
-    try {
-      body = await request.json()
-    } catch (e) {
+    const body = await request.json()
+    const { name, email, password } = body
+
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Invalid request body' },
+        { error: 'All fields are required' },
         { status: 400 }
       )
     }
 
-    const { name, email, password, role } = body
-
-    if (!name || !email || !password) {
+    if (password.length < 6) {
       return NextResponse.json(
-        { error: 'Name, email and password are required' },
+        { error: 'Password must be at least 6 characters' },
         { status: 400 }
       )
     }
@@ -34,15 +32,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create user
+    // ✅ HASH PASSWORD MANUALLY HERE - NOT IN MODEL
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+
+    // Create user with hashed password
     const user = await User.create({
       name,
       email,
-      password,
-      role: role || 'customer',
+      password: hashedPassword,
+      role: 'customer',
     })
 
-    // Remove password from response
     const userWithoutPassword = {
       id: user._id.toString(),
       name: user.name,
@@ -51,10 +52,11 @@ export async function POST(request: Request) {
       createdAt: user.createdAt,
     }
 
-    return NextResponse.json(
-      { message: 'User created successfully', user: userWithoutPassword },
-      { status: 201 }
-    )
+    return NextResponse.json({
+      success: true,
+      message: 'User created successfully',
+      user: userWithoutPassword,
+    })
   } catch (error: any) {
     console.error('Registration error:', error)
     return NextResponse.json(
