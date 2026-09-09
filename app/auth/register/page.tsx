@@ -16,11 +16,20 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
 
+    // Validation
     if (!formData.name.trim()) {
       setError('Full name is required')
       return
@@ -28,6 +37,12 @@ export default function RegisterPage() {
 
     if (!formData.email.trim()) {
       setError('Email is required')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address')
       return
     }
 
@@ -44,29 +59,36 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
+      const registrationData = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      }
+      
+      console.log('📤 Sending registration data:', registrationData)
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
+        body: JSON.stringify(registrationData),
       })
 
       const data = await response.json()
+      console.log('📦 Registration response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed')
       }
 
       setSuccess('Account created successfully! Redirecting to login...')
+      
       setTimeout(() => {
         router.push('/auth/login?registered=true')
-      }, 2000)
+      }, 1500)
     } catch (err: any) {
+      console.error('❌ Registration error:', err)
       setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
@@ -113,11 +135,13 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
+                name="name"
                 required
                 className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="John Doe"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={handleChange}
+                disabled={isLoading}
               />
             </div>
 
@@ -127,11 +151,13 @@ export default function RegisterPage() {
               </label>
               <input
                 type="email"
+                name="email"
                 required
                 className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="you@example.com"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={handleChange}
+                disabled={isLoading}
               />
             </div>
 
@@ -141,11 +167,13 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
+                name="password"
                 required
                 className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="Min 6 characters"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={handleChange}
+                disabled={isLoading}
               />
             </div>
 
@@ -155,11 +183,13 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
+                name="confirmPassword"
                 required
                 className="w-full bg-surface-container-low/50 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all backdrop-blur-sm border border-transparent focus:border-primary/50"
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={handleChange}
+                disabled={isLoading}
               />
             </div>
 

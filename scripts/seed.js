@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs')
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/aqua_market'
 
-// Simple schema without pre-hooks
+// User Schema (matching the model)
 const UserSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -44,7 +44,6 @@ const users = [
 async function seed() {
   try {
     console.log('Connecting to MongoDB...')
-    // Remove deprecated options
     await mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB')
 
@@ -52,7 +51,7 @@ async function seed() {
     await User.deleteMany({})
     console.log('✅ Cleared existing users')
 
-    // Hash passwords manually and create users
+    // Create users with hashed passwords
     for (const userData of users) {
       const salt = await bcrypt.genSalt(10)
       const hashedPassword = await bcrypt.hash(userData.password, salt)

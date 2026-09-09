@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 export interface IUser extends mongoose.Document {
   name: string
@@ -13,6 +14,7 @@ export interface IUser extends mongoose.Document {
   zipCode?: string
   createdAt: Date
   updatedAt: Date
+  comparePassword(candidatePassword: string): Promise<boolean>
 }
 
 const UserSchema = new mongoose.Schema<IUser>(
@@ -52,5 +54,55 @@ const UserSchema = new mongoose.Schema<IUser>(
   }
 )
 
-// ✅ NO pre-save hook - we'll hash manually in the API
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+// COMPLETELY REWRITTEN: Pre-save hook without callback
+UserSchema.pre('save', function(next) {
+  const user = this
+  
+  // Only hash if password is modified
+  if (!user.isModified('password')) {
+    return next()
+  }
+
+  // Use try-catch with async/await pattern but handle properly
+  (async () => {
+    try {
+      const salt = await bcrypt.genSalt(10)
+      const hashedPassword = await bcrypt.hash(user.password, salt)
+      user.password = hashedPassword
+      console.log('✅ Password hashed successfully for:', user.email)
+      next()
+    } catch (error: any) {
+      console.error('❌ Error hashing password:', error)
+      next(error)
+    }
+  })()
+})
+
+// Compare password method
+UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+  try {
+    if (!this.password) {
+      console.error('❌ User has no password stored')
+      return false
+    }
+    const isMatch = await bcrypt.compare(candidatePassword, this.password)
+    console.log('🔍 Password comparison result:', isMatch)
+    return isMatch
+  } catch (error) {
+    console.error('❌ Password comparison error:', error)
+    return false
+  }
+}
+
+// Remove password from JSON response
+UserSchema.set('toJSON', {
+  transform: function(doc, ret) {
+    delete ret.password
+    return ret
+  }
+})
+
+// Check if model exists before creating
+const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+
+export default User

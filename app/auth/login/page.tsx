@@ -6,44 +6,56 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@aquamarket.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get('redirect') || '/'
+  const registered = searchParams.get('registered')
 
-  // Only redirect if authenticated and not loading
+  // Show success message if just registered
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      console.log('✅ Already authenticated, redirecting to:', redirectPath)
+    if (registered === 'true') {
+      setSuccess('Account created successfully! Please login.')
+    }
+  }, [registered])
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
       router.push(redirectPath)
     }
-  }, [authLoading, isAuthenticated, router, redirectPath])
+  }, [isAuthenticated, router, redirectPath])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setIsLoading(true)
+
+    // Validate
+    if (!email.trim()) {
+      setError('Email is required')
+      setIsLoading(false)
+      return
+    }
+
+    if (!password.trim()) {
+      setError('Password is required')
+      setIsLoading(false)
+      return
+    }
 
     try {
       await login(email, password)
     } catch (err: any) {
-      console.error('Login error:', err)
-      setError(err.message || 'Login failed. Please check your credentials.')
-    } finally {
+      setError(err.message || 'Login failed. Please try again.')
       setIsLoading(false)
     }
-  }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
   }
 
   return (
@@ -65,6 +77,13 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {success && (
+            <div className="bg-green-500/10 text-green-600 p-3 rounded-lg mb-6 text-sm border border-green-500/20 flex items-start gap-2">
+              <span className="text-lg">✅</span>
+              <span>{success}</span>
+            </div>
+          )}
+
           {error && (
             <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20 flex items-start gap-2">
               <span className="text-lg">❌</span>
@@ -84,6 +103,8 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                autoComplete="email"
               />
             </div>
 
@@ -98,6 +119,8 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
 
@@ -129,12 +152,30 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-outline-variant/30">
-            <div className="text-xs text-on-surface-variant/70 text-center space-y-1">
-              <p className="font-medium text-on-surface-variant">Demo Accounts:</p>
-              <p className="font-mono text-xs">Admin: admin@aquamarket.com / admin123</p>
-              <p className="font-mono text-xs">Staff: staff@aquamarket.com / staff123</p>
-              <p className="font-mono text-xs">Customer: customer@aquamarket.com / customer123</p>
+          {/* Demo Credentials */}
+          <div className="mt-6 pt-6 border-t border-outline-variant/30">
+            <p className="text-xs text-center text-on-surface-variant mb-3">
+              Demo Credentials
+            </p>
+            <div className="flex flex-col gap-2 text-xs">
+              <button
+                onClick={() => {
+                  setEmail('admin@aquamarket.com')
+                  setPassword('admin123')
+                }}
+                className="text-center p-2 rounded-lg bg-surface-container-low hover:bg-primary/10 transition-colors"
+              >
+                Admin: admin@aquamarket.com / admin123
+              </button>
+              <button
+                onClick={() => {
+                  setEmail('customer@aquamarket.com')
+                  setPassword('customer123')
+                }}
+                className="text-center p-2 rounded-lg bg-surface-container-low hover:bg-primary/10 transition-colors"
+              >
+                Customer: customer@aquamarket.com / customer123
+              </button>
             </div>
           </div>
         </div>
