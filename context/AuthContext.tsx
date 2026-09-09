@@ -40,8 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedToken = localStorage.getItem('auth_token')
     const savedUser = localStorage.getItem('auth_user')
     
-    console.log('🔍 Checking localStorage for auth data')
-    
     if (savedToken && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser)
@@ -73,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       const data = await response.json()
-      console.log('📦 Login response status:', response.status)
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed')
@@ -90,13 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Redirect based on role
       if (data.user.role === 'admin') {
-        console.log('🔄 Redirecting to /admin')
         router.push('/admin')
       } else if (data.user.role === 'staff') {
-        console.log('🔄 Redirecting to /staff')
         router.push('/staff')
       } else {
-        console.log('🔄 Redirecting to /')
         router.push('/')
       }
     } catch (error: any) {
@@ -108,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
-    console.log('🚪 Logging out...')
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
     setUser(null)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCartStore } from '@/store/cartStore'
+import { useAuth } from '@/context/AuthContext'
 
 const navItems = [
   { name: 'Home', href: '/' },
@@ -15,6 +16,7 @@ const navItems = [
 
 export function TopNavBar() {
   const pathname = usePathname()
+  const { user, logout, isAuthenticated } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const { getTotalItems } = useCartStore()
@@ -88,7 +90,7 @@ export function TopNavBar() {
           {/* Wishlist Link */}
           <Link 
             href="/wishlist" 
-            className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 relative"
+            className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
@@ -114,12 +116,39 @@ export function TopNavBar() {
             </svg>
           </button>
           
-          {/* Profile */}
-          <Link href="/profile">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95">
-              <span className="text-primary font-semibold text-sm">JD</span>
+          {/* Auth Section */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <Link href="/profile">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95">
+                  <span className="text-primary font-semibold text-sm">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              </Link>
+              <button
+                onClick={logout}
+                className="text-sm text-on-surface-variant hover:text-error transition-colors"
+              >
+                Logout
+              </button>
             </div>
-          </Link>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/auth/login"
+                className="text-sm text-primary hover:underline transition-colors"
+              >
+                Login
+              </Link>
+              <Link
+                href="/auth/register"
+                className="text-sm btn-primary px-4 py-2"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

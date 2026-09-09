@@ -152,7 +152,7 @@ const OrderSchema = new mongoose.Schema<IOrder>(
   }
 )
 
-// Generate order ID before saving - FIXED: Use regular function, not arrow
+// Generate order ID before saving - FIXED: Use regular function
 OrderSchema.pre('save', function(next) {
   if (!this.orderId) {
     const date = new Date()

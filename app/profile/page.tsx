@@ -3,23 +3,28 @@
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 export default function ProfilePage() {
-  const { user, isLoading, logout } = useAuth()
+  const { user, isLoading, logout, isAuthenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/auth/login')
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth/login?redirect=/profile')
     }
-  }, [user, isLoading, router])
+  }, [isLoading, isAuthenticated, router])
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
+  }
+
+  if (!isAuthenticated || !user) {
+    return null
   }
 
   return (
@@ -60,12 +65,20 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <button
-            onClick={logout}
-            className="w-full btn-primary justify-center py-3 bg-error hover:bg-error/90"
-          >
-            Sign Out
-          </button>
+          <div className="flex gap-4 mt-4">
+            <Link
+              href="/orders"
+              className="flex-1 px-6 py-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-center"
+            >
+              View Orders
+            </Link>
+            <button
+              onClick={logout}
+              className="flex-1 px-6 py-3 rounded-xl bg-error/10 text-error hover:bg-error/20 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </div>

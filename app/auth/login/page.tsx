@@ -15,29 +15,36 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get('redirect') || '/'
 
-  // Redirect if already authenticated
+  // Only redirect if authenticated and not loading
   useEffect(() => {
-    console.log('🔍 Login page - Auth state:', { isAuthenticated, authLoading })
     if (!authLoading && isAuthenticated) {
       console.log('✅ Already authenticated, redirecting to:', redirectPath)
       router.push(redirectPath)
     }
-  }, [isAuthenticated, authLoading, router, redirectPath])
+  }, [authLoading, isAuthenticated, router, redirectPath])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
-    console.log('📝 Login form submitted')
 
     try {
       await login(email, password)
+      // The login function handles redirect
     } catch (err: any) {
-      console.error('Login form error:', err)
       setError(err.message || 'Login failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -97,7 +104,10 @@ export default function LoginPage() {
               className="w-full btn-primary justify-center py-3"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Signing in...</span>
+                </div>
               ) : (
                 'Sign In'
               )}
