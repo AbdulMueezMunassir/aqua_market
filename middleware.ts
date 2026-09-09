@@ -2,65 +2,60 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Get token from cookies
-  const token = request.cookies.get('auth_token')?.value
   const path = request.nextUrl.pathname
   
-  console.log('🔍 Middleware:', path, 'Token:', token ? '✅' : '❌')
-
-  // ALWAYS allow API routes
-  if (path.startsWith('/api')) {
+  // Get token from cookies or authorization header
+  const token = request.cookies.get('auth_token')?.value || 
+                request.headers.get('authorization')?.replace('Bearer ', '')
+  
+  console.log(`🔍 Middleware: ${path} Token: ${token ? '✅' : '❌'}`)
+  
+  // Define public paths (no authentication required)
+  const publicPaths = [
+    '/',
+    '/auth/login',
+    '/auth/register',
+    '/api/auth/login',
+    '/api/auth/register',
+    '/shop',
+    '/products',
+    '/api/products',
+    '/categories',
+    '/popular',
+    '/product',
+    '/api/payment',
+    '/api/admin/analytics',
+    '/api/admin/orders',
+  ]
+  
+  // Check if the path is public
+  const isPublicPath = publicPaths.some(p => path.startsWith(p)) || 
+                       path === '/' ||
+                       path.startsWith('/_next') ||
+                       path.startsWith('/favicon.ico') ||
+                       path.startsWith('/images') ||
+                       path.startsWith('/api/products') ||
+                       path === '/api/auth/me'
+  
+  // If it's a public path, allow access
+  if (isPublicPath) {
     return NextResponse.next()
   }
-
-  // ALWAYS allow static files
-  if (path.includes('.')) {
-    return NextResponse.next()
+  
+  // If no token and trying to access protected route, redirect to login
+  if (!token && !isPublicPath) {
+    console.log(`🔒 Redirecting to login from: ${path}`)
+    const loginUrl = new URL('/auth/login', request.url)
+    loginUrl.searchParams.set('redirect', path)
+    return NextResponse.redirect(loginUrl)
   }
-
-  // ALWAYS allow auth pages
-  if (path === '/auth/login' || path === '/auth/register') {
-    return NextResponse.next()
-  }
-
-  // ALWAYS allow public pages
-  const publicPaths = ['/', '/shop', '/categories', '/popular', '/wishlist', '/cart']
-  if (publicPaths.includes(path) || path.startsWith('/product/')) {
-    return NextResponse.next()
-  }
-
-  // ⭐ KEY FIX: If user has token, allow profile
-  if (token && path === '/profile') {
-    return NextResponse.next()
-  }
-
-  // ⭐ KEY FIX: If user has token, allow orders
-  if (token && path === '/orders') {
-    return NextResponse.next()
-  }
-
-  // ⭐ KEY FIX: If user has token, allow checkout
-  if (token && path === '/checkout') {
-    return NextResponse.next()
-  }
-
-  // ⭐ KEY FIX: If user has token, allow admin
-  if (token && path.startsWith('/admin')) {
-    return NextResponse.next()
-  }
-
-  // If NO token and trying to access protected routes, redirect to login
-  const protectedPaths = ['/admin', '/profile', '/orders', '/checkout']
-  if (!token && protectedPaths.some(p => path.startsWith(p))) {
-    console.log('🔒 Redirecting to login from:', path)
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
+  
+  // If token exists, allow access
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images|api/webhook|api/stripe/webhook).*)',
   ],
 }
