@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCartStore } from '@/store/cartStore'
+import { useWishlistStore } from '@/store/wishlistStore'
 
 interface User {
   id: string
@@ -36,40 +38,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // 🔑 Per-user cart & wishlist setters
+  const setCartUser = useCartStore((s) => s.setUser)
+  const setWishlistUser = useWishlistStore((s) => s.setUser)
+
+  // ────────────────────────────────────────────────────────────
+  // Restore session from localStorage on mount
+  // ────────────────────────────────────────────────────────────
   useEffect(() => {
-    // Check localStorage for token
     const savedToken = localStorage.getItem('auth_token')
     const savedUser = localStorage.getItem('auth_user')
-    
+
     if (savedToken && savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser)
+        const parsedUser: User = JSON.parse(savedUser)
         setUser(parsedUser)
         setToken(savedToken)
+
+        // Load this user's own cart & wishlist
+        setCartUser(parsedUser.id)
+        setWishlistUser(parsedUser.id)
+
         console.log('✅ User restored from localStorage:', parsedUser.email)
       } catch (error) {
         console.error('Error parsing user data:', error)
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
+        setCartUser(null)
+        setWishlistUser(null)
       }
+    } else {
+      console.log('ℹ️ No auth data found — guest mode')
+      setCartUser(null)
+      setWishlistUser(null)
     }
-    setIsLoading(false)
-  }, [])
 
+    setIsLoading(false)
+  }, [setCartUser, setWishlistUser])
+
+  // ────────────────────────────────────────────────────────────
+  // LOGIN
+  // ────────────────────────────────────────────────────────────
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
       console.log('🔐 Attempting login for:', email)
-      
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
 
-      // Check if response is JSON
+      // Guard against non-JSON responses (HTML error pages, etc.)
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
@@ -84,21 +105,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'Login failed')
       }
 
-      // Validate response data
       if (!data.token || !data.user) {
         throw new Error('Invalid response from server')
       }
 
-      // Save to localStorage
+      // Persist session
       localStorage.setItem('auth_token', data.token)
       localStorage.setItem('auth_user', JSON.stringify(data.user))
-      
+
       setUser(data.user)
       setToken(data.token)
 
-      console.log('✅ Login successful for:', data.user.email, 'Role:', data.user.role)
+      // 🔑 Switch to this user's cart & wishlist
+      setCartUser(data.user.id)
+      setWishlistUser(data.user.id)
 
-      // Redirect based on role
+      console.log('✅ Login successful:', data.user.email, '| role:', data.user.role)
+
+      // Role-based redirect
       if (data.user.role === 'admin') {
         router.push('/admin')
       } else if (data.user.role === 'staff') {
@@ -114,16 +138,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // REGISTER
+  // ────────────────────────────────────────────────────────────
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true)
     try {
       console.log('📝 Attempting registration for:', email)
-      
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       })
 
@@ -134,9 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'Registration failed')
       }
 
-      console.log('✅ Registration successful for:', email)
-      
-      // After successful registration, redirect to login
+      console.log('✅ Registration successful:', email)
+
+      // Send user to login with a success hint
       router.push('/auth/login?registered=true')
     } catch (error: any) {
       console.error('❌ Registration error:', error)
@@ -146,15 +171,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // LOGOUT
+  // ────────────────────────────────────────────────────────────
   const logout = () => {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
+
     setUser(null)
     setToken(null)
+
+    // 🔑 Switch back to guest cart & wishlist (user's cart is preserved in localStorage)
+    setCartUser(null)
+    setWishlistUser(null)
+
     router.push('/auth/login')
   }
 
-  const value = {
+  // ────────────────────────────────────────────────────────────
+  // Context value
+  // ────────────────────────────────────────────────────────────
+  const value: AuthContextType = {
     user,
     token,
     isLoading,
@@ -166,11 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isStaff: user?.role === 'staff' || user?.role === 'admin',
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
