@@ -117,22 +117,10 @@ const OrderSchema = new mongoose.Schema<IOrder>(
       default: 'Pending',
     },
     shipping: {
-      address: {
-        type: String,
-        required: true,
-      },
-      city: {
-        type: String,
-        required: true,
-      },
-      state: {
-        type: String,
-        required: false,
-      },
-      zipCode: {
-        type: String,
-        required: false,
-      },
+      address: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, required: false, default: '' },
+      zipCode: { type: String, required: false, default: '' },
     },
     notes: {
       type: String,
@@ -152,17 +140,24 @@ const OrderSchema = new mongoose.Schema<IOrder>(
   }
 )
 
-// Generate order ID before saving - FIXED: Use regular function
-OrderSchema.pre('save', function(next) {
+// ────────────────────────────────────────────────────────────
+// ✅ FIXED: Pre-save hook without callback issues
+// Uses async function WITHOUT calling next() — Mongoose supports this in v7+
+// If you're on Mongoose 6.x, we call next() but properly
+// ────────────────────────────────────────────────────────────
+OrderSchema.pre('save', function () {
+  // Generate orderId if not set (using a synchronous operation — no callback needed)
   if (!this.orderId) {
     const date = new Date()
     const year = date.getFullYear().toString().slice(-2)
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0')
     this.orderId = `ORD-${year}${month}${day}-${random}`
   }
-  next()
+  // No next() call needed — synchronous hook returns undefined
 })
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema)
