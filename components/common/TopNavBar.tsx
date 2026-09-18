@@ -16,11 +16,11 @@ const navItems = [
 
 export function TopNavBar() {
   const pathname = usePathname()
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout, isAuthenticated, isAdmin } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const { getTotalItems } = useCartStore()
-  
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -52,9 +52,10 @@ export function TopNavBar() {
         {/* Navigation */}
         <nav className="flex items-center gap-8">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || 
+            const isActive =
+              pathname === item.href ||
               (item.href === '/shop' && pathname?.startsWith('/shop'))
-            
+
             return (
               <Link
                 key={item.name}
@@ -69,14 +70,42 @@ export function TopNavBar() {
               </Link>
             )
           })}
+
+          {/* Admin Link — only for admins */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`font-body-md text-body-md py-1 px-3 rounded-full transition-colors duration-300 ${
+                pathname?.startsWith('/admin')
+                  ? 'bg-primary text-white font-bold'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20'
+              }`}
+            >
+              🛠️ Admin
+            </Link>
+          )}
         </nav>
 
         {/* Right Section */}
         <div className="flex items-center gap-6">
           {/* Search */}
-          <form onSubmit={handleSearch} className="relative bg-surface-container-low rounded-full px-4 py-2 flex items-center gap-2 border border-outline-variant/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-outline">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          <form
+            onSubmit={handleSearch}
+            className="relative bg-surface-container-low rounded-full px-4 py-2 flex items-center gap-2 border border-outline-variant/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-5 h-5 text-outline"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
             </svg>
             <input
               type="text"
@@ -86,21 +115,46 @@ export function TopNavBar() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </form>
-          
-          {/* Wishlist Link */}
-          <Link 
-            href="/wishlist" 
+
+          {/* Wishlist */}
+          <Link
+            href="/wishlist"
             className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+              />
             </svg>
           </Link>
-          
-          {/* Cart Link */}
-          <Link href="/cart" className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 relative">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+
+          {/* Cart */}
+          <Link
+            href="/cart"
+            className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 relative"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+              />
             </svg>
             {totalItems > 0 && (
               <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -108,11 +162,11 @@ export function TopNavBar() {
               </span>
             )}
           </Link>
-          
-          {/* Auth Section */}
+
+          {/* Auth */}
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <Link href="/profile">
+              <Link href="/profile" title="My Profile">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center border-2 border-surface-container-high shadow-sm cursor-pointer active:scale-95 hover:shadow-md transition-all">
                   <span className="text-primary font-semibold text-sm">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}

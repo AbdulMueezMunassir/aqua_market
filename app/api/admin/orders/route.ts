@@ -1,111 +1,170 @@
-import { NextResponse} from 'next/server'
+﻿import { NextResponse } from 'next/server'
+import { connectToDatabase } from '@/lib/mongodb'
+import Order from '@/models/Order'
+import jwt from 'jsonwebtoken'
 
-// mock orders data
-let orders = [
-    {
-        id: '#ORD-9082',
-        customer: 'Chandimal',
-        email: 'chandimal@gmail.com',
-        date: '2026-05-21',
-        amount: 2500,
-        status: 'Processing',
-        items: [
-            { name: 'Royal Gramma', quantity: 1, price: 8500},
-            { name: 'Neon Tetra', quantity: 2, price: 300}
-        ],
-        shipping: {
-            address: 'Wellewatha, Colombo 06',
-            city: 'Colombo',
-            province: 'Western',
-            zip: '12055'
-        }
-    },
-    {
-        id: '#ORD-9081',
-        customer: 'Jal Paarik',
-        email: 'jalpaarik@email.com',
-        date: '2026-8-24',
-        amount: 8900,
-        status: 'Shipped',
-        items: [
-        { name: 'Crystal Red Shrimp', quantity: 3, price: 1500 },
-        { name: 'Halfmoon Betta', quantity: 1, price: 2500 }
-        ],
-        shipping: {
-        address: '18, Molliyamala',
-        city: 'Beruwala',
-        Province: 'Western',
-        zip: '12061'
-        }
-    },
-    {
-        id: '#ORD-9079',
-        customer: 'Abdullah.M',
-        email: 'abdullahm@email.com',
-        date: '2026-08-22',
-        amount: 5400,
-        status: 'Pending',
-        items: [
-        { name: 'Neon Tetra', quantity: 8, price: 300 },
-        { name: 'Halfmoon Betta', quantity: 1, price: 2500 }
-        ],
-        shipping: {
-        address: '55/A Galbokka',
-        city: 'Weligama',
-        Province: 'Southern',
-        zip: '12095'
-        }
-    },
-    {
-        id: '#ORD-9078',
-        customer: 'Raafath Ahamed',
-        email: 'raafathahmd@email.com',
-        date: '2026-07-21',
-        amount: 12800,
-        status: 'Cancelled',
-        items: [
-        { name: 'Royal Gramma', quantity: 1, price: 8500 },
-        { name: 'Crystal Red Shrimp', quantity: 2, price: 1500 }
-        ],
-        shipping: {
-        address: '65 beach road',
-        city: 'Maruthamunaiin',
-        province: 'Eastern',
-        zip: '123654'
-        }
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
+
+function verifyAdmin(request: Request) {
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null
+  const token = authHeader.split(' ')[1]
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+    if (decoded.role !== 'admin') return null
+    return decoded
+  } catch {
+    return null
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
     }
-]
 
-export async function GET() {
+    await connectToDatabase()
+
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const search = searchParams.get('search') || ''
+
+    const query: any = {}
+
+    if (status && status !== 'All') {
+      query.status = status
+    }
+
+    if (search.trim()) {
+      const regex = new RegExp(search.trim(), 'i')
+      query.$or = [{ orderId: regex }, { customer: regex }, { email: regex }]
+    }
+
+    const orders = await Order.find(query).sort({ createdAt: -1 })
+
     return NextResponse.json(orders)
+  } catch (error: any) {
+    console.error('Admin orders GET error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch orders' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function PUT(request: Request) {
+  try {
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    await connectToDatabase()
     const body = await request.json()
-    const {id, status }= body
+    const { id, status, paymentStatus } = body
 
-    const index = orders.findIndex(order => order.id === id)
-    if (index === -1){
-        return NextResponse.json({error: 'Order not found', {status: 404}})
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Order ID is required' },
+        { status: 400 }
+      )
     }
 
-    orders[index] = {
-        ...order[index],
-        status,
-        updateAt: new Date()
+    const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+    const validPaymentStatuses = ['Pending', 'Paid', 'Failed', 'Cancelled']
+
+    const update: any = {}
+
+    if (status) {
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { error: 'Invalid status: ' + status },
+          { status: 400 }
+        )
+      }
+      update.status = status
     }
-    return NextResponse.json(orders[index])
+
+    if (paymentStatus) {
+      if (!validPaymentStatuses.includes(paymentStatus)) {
+        return NextResponse.json(
+          { error: 'Invalid payment status: ' + paymentStatus },
+          { status: 400 }
+        )
+      }
+      update.paymentStatus = paymentStatus
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json(
+        { error: 'Nothing to update' },
+        { status: 400 }
+      )
+    }
+
+    const order = await Order.findByIdAndUpdate(id, update, {
+      new: true,
+      runValidators: true,
+    })
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    console.log('Order ' + order.orderId + ' updated to status: ' + order.status)
+
+    return NextResponse.json(order)
+  } catch (error: any) {
+    console.error('Admin orders PUT error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to update order' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function DELETE(request: Request) {
+  try {
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    await connectToDatabase()
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
-    const index = orders.findIndex(order => order.id === id)
-    if (index === -1){
-        return NextResponse.json({error: 'Order not found'}, {status: 404})
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Order ID is required' },
+        { status: 400 }
+      )
     }
 
-    orders.splice(index, 1)
-    return NextResponse.json({message: 'Order deleted successfully' })
+    const order = await Order.findByIdAndDelete(id)
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    console.log('Order ' + order.orderId + ' deleted')
+
+    return NextResponse.json({ message: 'Order deleted successfully' })
+  } catch (error: any) {
+    console.error('Admin orders DELETE error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete order' },
+      { status: 500 }
+    )
+  }
 }

@@ -90,6 +90,14 @@ export default function ProfilePage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-outline-variant/30">
+            {user?.role === 'admin' && (
+              <Link
+                href="/admin"
+                className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-tertiary to-primary text-white hover:shadow-lg transition-all text-center font-medium"
+              >
+                🛠️ Admin Dashboard
+              </Link>
+            )}
             <Link
               href="/orders"
               className="flex-1 px-6 py-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-center font-medium"

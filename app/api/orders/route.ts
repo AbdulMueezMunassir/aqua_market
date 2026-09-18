@@ -1,156 +1,188 @@
 import { NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/mongodb'
 import Order from '@/models/Order'
-import Product from '@/models/Product'
 import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 
 // ────────────────────────────────────────────────────────────
-// Helper: Verify JWT and return user info
+// Admin role check
 // ────────────────────────────────────────────────────────────
-function verifyUser(request: Request) {
+function verifyAdmin(request: Request) {
   const authHeader = request.headers.get('authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
-  }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null
   const token = authHeader.split(' ')[1]
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any
-    return {
-      id: decoded.id,
-      email: decoded.email,
-      name: decoded.name,
-      role: decoded.role,
-    }
+    if (decoded.role !== 'admin') return null
+    return decoded
   } catch {
     return null
   }
 }
 
 // ────────────────────────────────────────────────────────────
-// POST — Create a new order
+// GET — List all orders (admin only)
 // ────────────────────────────────────────────────────────────
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    const user = verifyUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
     }
 
     await connectToDatabase()
-    const body = await request.json()
 
-    console.log('📦 Order creation request from:', user.email)
-    console.log('📦 Body:', JSON.stringify(body, null, 2))
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const search = searchParams.get('search') || ''
 
-    // Validate required fields
-    if (!body.items || body.items.length === 0) {
-      return NextResponse.json({ error: 'No items in order' }, { status: 400 })
-    }
-    if (!body.shipping || !body.shipping.address || !body.shipping.city) {
-      return NextResponse.json(
-        { error: 'Shipping address is required' },
-        { status: 400 }
-      )
-    }
-    if (!body.phone) {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      )
+    const query: any = {}
+
+    if (status && status !== 'All') {
+      query.status = status
     }
 
-    // Validate stock availability for each item
-    for (const item of body.items) {
-      const product = await Product.findById(item.productId)
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product "${item.name}" not found` },
-          { status: 404 }
-        )
-      }
-      if (product.stock < item.quantity) {
-        return NextResponse.json(
-          { error: `Insufficient stock for "${product.name}". Only ${product.stock} left.` },
-          { status: 400 }
-        )
-      }
+    if (search.trim()) {
+      const regex = new RegExp(search.trim(), 'i')
+      query.$or = [{ orderId: regex }, { customer: regex }, { email: regex }]
     }
 
-    // Generate order ID
-    const date = new Date()
-    const year = date.getFullYear().toString().slice(-2)
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-    const orderId = `ORD-${year}${month}${day}-${random}`
+    const orders = await Order.find(query).sort({ createdAt: -1 })
 
-    // Create the order
-    const order = await Order.create({
-      orderId,
-      userId: user.id,
-      customer: user.name || 'Customer',
-      email: user.email,
-      phone: body.phone,
-      items: body.items,
-      subtotal: body.subtotal || 0,
-      deliveryFee: body.deliveryFee || 0,
-      tax: body.tax || 0,
-      total: body.total || 0,
-      paymentMethod: body.paymentMethod || 'mock',
-      paymentStatus: 'Pending',
-      status: 'Pending',
-      shipping: {
-        address: body.shipping.address,
-        city: body.shipping.city,
-        state: body.shipping.state || '',
-        zipCode: body.shipping.zipCode || '',
-      },
-      notes: body.notes || '',
-    })
-
-    console.log('✅ Order created:', order.orderId)
-
-    // Decrement stock
-    for (const item of body.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
-      })
-      console.log(`   📉 Stock updated for ${item.name}: -${item.quantity}`)
-    }
-
-    return NextResponse.json(order, { status: 201 })
+    return NextResponse.json(orders)
   } catch (error: any) {
-    console.error('❌ Error creating order:', error)
+    console.error('❌ Admin orders GET error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create order' },
+      { error: error.message || 'Failed to fetch orders' },
       { status: 500 }
     )
   }
 }
 
 // ────────────────────────────────────────────────────────────
-// GET — Fetch orders for the logged-in user
+// PUT — Update order status (admin only)
 // ────────────────────────────────────────────────────────────
-export async function GET(request: Request) {
+export async function PUT(request: Request) {
   try {
-    const user = verifyUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
     }
 
     await connectToDatabase()
+    const body = await request.json()
+    const { id, status, paymentStatus } = body
 
-    // Admin sees all orders, customer sees only their own
-    const query = user.role === 'admin' ? {} : { userId: user.id }
-    const orders = await Order.find(query).sort({ createdAt: -1 })
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Order ID is required' },
+        { status: 400 }
+      )
+    }
 
-    return NextResponse.json(orders)
+    const validStatuses = [
+      'Pending',
+      'Processing',
+      'Shipped',
+      'Delivered',
+      'Cancelled',
+    ]
+    const validPaymentStatuses = ['Pending', 'Paid', 'Failed', 'Cancelled']
+
+    const update: any = {}
+    if (status) {
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { error: `Invalid status: ${status}` },
+          { status: 400 }
+        )
+      }
+      update.status = status
+    }
+
+    if (paymentStatus) {
+      if (!validPaymentStatuses.includes(paymentStatus)) {
+        return NextResponse.json(
+          { error: `Invalid payment status: ${paymentStatus}` },
+          { status: 400 }
+        )
+      }
+      update.paymentStatus = paymentStatus
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json(
+        { error: 'Nothing to update' },
+        { status: 400 }
+      )
+    }
+
+    const order = await Order.findByIdAndUpdate(id, update, {
+      new: true,
+      runValidators: true,
+    })
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    console.log(
+      `✅ Order ${order.orderId} updated → status: ${order.status}, payment: ${order.paymentStatus}`
+    )
+
+    return NextResponse.json(order)
   } catch (error: any) {
-    console.error('Error fetching orders:', error)
+    console.error('❌ Admin orders PUT error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch orders' },
+      { error: error.message || 'Failed to update order' },
+      { status: 500 }
+    )
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// DELETE — Delete an order (admin only)
+// ────────────────────────────────────────────────────────────
+export async function DELETE(request: Request) {
+  try {
+    const admin = verifyAdmin(request)
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    await connectToDatabase()
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Order ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const order = await Order.findByIdAndDelete(id)
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    console.log(`🗑️ Order ${order.orderId} deleted by ${admin.email}`)
+
+    return NextResponse.json({ message: 'Order deleted successfully' })
+  } catch (error: any) {
+    console.error('❌ Admin orders DELETE error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete order' },
       { status: 500 }
     )
   }
