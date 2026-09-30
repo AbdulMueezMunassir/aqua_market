@@ -6,6 +6,8 @@ import { useCartStore } from '@/store/cartStore'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { ReviewSection } from '@/components/product/ReviewSection'
+
 
 interface Product {
   _id: string
@@ -250,6 +252,11 @@ export default function ProductDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ⭐ Reviews Section */}
+      <div className="mt-16 max-w-3xl">
+        <ReviewSection productId={product._id} />
       </div>
     </div>
   )

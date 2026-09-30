@@ -1,10 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  images: {
-    domains: ['lh3.googleusercontent.com'],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+      allowedOrigins: [
+        'localhost:3000',
+        '127.0.0.1:3000',
+      ],
+    },
   },
-  transpilePackages: ['@heroicons/react'],
 }
 
 module.exports = nextConfig
