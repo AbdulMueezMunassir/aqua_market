@@ -314,7 +314,7 @@ export default function ShopPage() {
 
               <div className="flex gap-1">
                 {[...Array(Math.min(pagination.pages, 5))].map((_, i) => {
-                  let pageNum
+                  let pageNum: number
                   if (pagination.pages <= 5) {
                     pageNum = i + 1
                   } else if (pagination.page <= 3) {

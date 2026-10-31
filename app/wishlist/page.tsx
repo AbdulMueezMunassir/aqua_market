@@ -39,7 +39,7 @@ export default function WishlistPage() {
     try {
       // Fetch all products (including inactive — that's why we use admin-style query)
       // Since public API filters by status: 'Active', let's fetch each individually
-      const promises = items.map((id) =>
+      const promises = items.map((id: string) =>
         fetch(`/api/products/${id}`)
           .then((res) => (res.ok ? res.json() : null))
           .catch(() => null)

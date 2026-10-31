@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useCartStore } from '@/store/cartStore'
+import { useCartStore, type CartStore } from '@/store/cartStore'
 import { useWishlistStore } from '@/store/wishlistStore'
 
 interface Product {
@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
   const [imageError, setImageError] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
   
-  const addItem = useCartStore((state) => state.addItem)
+  const addItem = useCartStore((state: CartStore) => state.addItem)
   const { isInWishlist, toggleItem } = useWishlistStore()
 
   const productId = product._id || product.id || ''

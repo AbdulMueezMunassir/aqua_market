@@ -5,7 +5,7 @@ import { connectToDatabase } from '@/lib/mongodb'
 import Order from '@/models/Order'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_your_key_here', {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2026-08-26.dahlia',
 })
 
 // Webhook secret from Stripe dashboard
@@ -53,7 +53,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   try {
     await connectToDatabase()
     const orderId = paymentIntent.metadata.orderId
-    
+
     if (!orderId) {
       console.error('No orderId in payment intent metadata')
       return
@@ -65,6 +65,12 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       return
     }
 
+    let receiptUrl = ''
+    if (paymentIntent.latest_charge) {
+      const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string)
+      receiptUrl = typeof charge === 'object' && 'receipt_url' in charge ? charge.receipt_url || '' : ''
+    }
+
     // Update order status
     order.paymentStatus = 'Paid'
     order.status = 'Processing'
@@ -74,7 +80,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       currency: paymentIntent.currency,
       status: paymentIntent.status,
       paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
-      receiptUrl: paymentIntent.charges?.data?.[0]?.receipt_url || '',
+      receiptUrl,
     }
 
     await order.save()

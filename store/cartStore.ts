@@ -11,7 +11,7 @@ export interface CartItem {
   stock: number
 }
 
-interface CartStore {
+export interface CartStore {
   items: CartItem[]
   currentUserKey: string | null
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
@@ -31,7 +31,7 @@ interface CartStore {
 const getStorageKey = (userKey: string | null) =>
   `aqua-market-cart-${userKey || 'guest'}`
 
-export const useCartStore = create<CartStore>()(
+export const useCartStore: any = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],

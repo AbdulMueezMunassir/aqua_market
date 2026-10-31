@@ -5,17 +5,28 @@ import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+type ProfileFormData = {
+  name: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
+}
+
+const emptyFormData: ProfileFormData = {
+  name: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  zipCode: '',
+}
+
 export default function EditProfilePage() {
-  const { user, token, isLoading, isAuthenticated } = useAuth()
+  const { user, token, isLoading, isAuthenticated, updateUser } = useAuth()
   const router = useRouter()
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-  })
+  const [formData, setFormData] = useState<ProfileFormData>(emptyFormData)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -44,6 +55,22 @@ export default function EditProfilePage() {
     }
   }, [user])
 
+  const validateForm = (values: ProfileFormData) => {
+    if (!values.name.trim()) {
+      return 'Full name is required.'
+    }
+
+    if (values.phone.trim() && !/^[0-9+()\-\s]{7,20}$/.test(values.phone.trim())) {
+      return 'Please enter a valid phone number.'
+    }
+
+    if (values.zipCode.trim() && values.zipCode.trim().length < 3) {
+      return 'Please enter a valid postal code.'
+    }
+
+    return ''
+  }
+
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -58,13 +85,35 @@ export default function EditProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
+
+    const normalizedData = {
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim(),
+      zipCode: formData.zipCode.trim(),
+    }
+
+    const validationError = validateForm(normalizedData)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    if (!token) {
+      setError('You are not logged in. Please sign in again.')
+      router.push('/auth/login?redirect=/profile/edit')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -72,9 +121,9 @@ export default function EditProfilePage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(normalizedData),
       })
 
       const data = await response.json()
@@ -83,18 +132,18 @@ export default function EditProfilePage() {
         throw new Error(data.error || 'Failed to update profile')
       }
 
-      // Update local user data
-      const updatedUser = { ...user, ...formData }
-      localStorage.setItem('auth_user', JSON.stringify(updatedUser))
-      
+      updateUser({
+        ...user,
+        ...normalizedData,
+      })
+
       setSuccess('Profile updated successfully!')
-      
-      // Redirect after 2 seconds
+
       setTimeout(() => {
         router.push('/profile')
-      }, 2000)
+      }, 1200)
     } catch (error: any) {
-      setError(error.message)
+      setError(error.message || 'Failed to update profile')
     } finally {
       setLoading(false)
     }
@@ -122,13 +171,13 @@ export default function EditProfilePage() {
 
         {success && (
           <div className="bg-green-500/10 text-green-600 p-3 rounded-lg mb-6 text-sm border border-green-500/20">
-            ✅ {success}
+            ? {success}
           </div>
         )}
 
         {error && (
           <div className="bg-error-container/20 text-error p-3 rounded-lg mb-6 text-sm border border-error/20">
-            ❌ {error}
+            ? {error}
           </div>
         )}
 

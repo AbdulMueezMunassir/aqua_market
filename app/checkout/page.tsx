@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useCartStore } from '@/store/cartStore'
+import { useCartStore, type CartItem } from '@/store/cartStore'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -69,7 +69,7 @@ export default function CheckoutPage() {
 
     try {
       const orderData = {
-        items: items.map((item) => ({
+        items: items.map((item: CartItem) => ({
           productId: item.id,
           name: item.name,
           quantity: item.quantity,
@@ -355,7 +355,7 @@ export default function CheckoutPage() {
             </h3>
 
             <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
-              {items.map((item) => (
+              {items.map((item: CartItem) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="truncate pr-2">
                     {item.name} × {item.quantity}

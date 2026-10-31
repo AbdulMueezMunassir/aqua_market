@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCartStore } from '@/store/cartStore'
-import { useWishlistStore } from '@/store/wishlistStore'
+import { useCartStore, type CartStore } from '@/store/cartStore'
+import { useWishlistStore, type WishlistStore } from '@/store/wishlistStore'
 
 interface User {
   id: string
@@ -24,6 +24,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
+  updateUser: (updates: Partial<User>) => void
   logout: () => void
   isAuthenticated: boolean
   isAdmin: boolean
@@ -39,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   // 🔑 Per-user cart & wishlist setters
-  const setCartUser = useCartStore((s) => s.setUser)
-  const setWishlistUser = useWishlistStore((s) => s.setUser)
+  const setCartUser = useCartStore((s: CartStore) => s.setUser)
+  const setWishlistUser = useWishlistStore((s: WishlistStore) => s.setUser)
 
   // ────────────────────────────────────────────────────────────
   // Restore session from localStorage on mount
@@ -172,6 +173,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // ────────────────────────────────────────────────────────────
+  // UPDATE USER
+  // ────────────────────────────────────────────────────────────
+  const updateUser = (updates: Partial<User>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser
+
+      const nextUser = { ...currentUser, ...updates }
+      localStorage.setItem('auth_user', JSON.stringify(nextUser))
+      return nextUser
+    })
+  }
+
+  // ────────────────────────────────────────────────────────────
   // LOGOUT
   // ────────────────────────────────────────────────────────────
   const logout = () => {
@@ -197,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     login,
     register,
+    updateUser,
     logout,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',

@@ -54,28 +54,25 @@ const UserSchema = new mongoose.Schema<IUser>(
   }
 )
 
-// COMPLETELY REWRITTEN: Pre-save hook without callback
-UserSchema.pre('save', function(next) {
-  const user = this
-  
-  // Only hash if password is modified
+;(UserSchema as any).pre('save', function (this: any, next: any) {
+  const user = this as any
+
   if (!user.isModified('password')) {
     return next()
   }
 
-  // Use try-catch with async/await pattern but handle properly
-  (async () => {
-    try {
-      const salt = await bcrypt.genSalt(10)
-      const hashedPassword = await bcrypt.hash(user.password, salt)
+  bcrypt
+    .genSalt(10)
+    .then((salt) => bcrypt.hash(user.password, salt))
+    .then((hashedPassword) => {
       user.password = hashedPassword
       console.log('✅ Password hashed successfully for:', user.email)
       next()
-    } catch (error: any) {
+    })
+    .catch((error: Error) => {
       console.error('❌ Error hashing password:', error)
       next(error)
-    }
-  })()
+    })
 })
 
 // Compare password method
@@ -96,10 +93,10 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
 
 // Remove password from JSON response
 UserSchema.set('toJSON', {
-  transform: function(doc, ret) {
-    delete ret.password
+  transform: function (doc, ret) {
+    delete (ret as any).password
     return ret
-  }
+  },
 })
 
 // Check if model exists before creating

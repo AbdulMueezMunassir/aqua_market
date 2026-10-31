@@ -76,7 +76,7 @@ export default function FishManagement() {
     return matchesSearch && matchesCategory
   })
 
-  const categories = ['all', ...new Set(fish.map(f => f.category))]
+  const categories = ['all', ...Array.from(new Set(fish.map((f) => f.category)))]
 
   if (loading) {
     return (

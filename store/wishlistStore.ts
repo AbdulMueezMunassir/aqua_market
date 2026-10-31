@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-interface WishlistStore {
+export interface WishlistStore {
   items: string[]
   currentUserKey: string | null
   addItem: (id: string) => void
@@ -15,7 +15,7 @@ interface WishlistStore {
 const getStorageKey = (userKey: string | null) =>
   `aqua-market-wishlist-${userKey || 'guest'}`
 
-export const useWishlistStore = create<WishlistStore>()(
+export const useWishlistStore: any = create<WishlistStore>()(
   persist(
     (set, get) => ({
       items: [],

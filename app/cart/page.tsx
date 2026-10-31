@@ -1,6 +1,6 @@
 'use client'
 
-import { useCartStore } from '@/store/cartStore'
+import { useCartStore, type CartItem } from '@/store/cartStore'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -48,7 +48,7 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {items.map((item) => (
+          {items.map((item: CartItem) => (
             <div key={item.id} className="glass-panel rounded-xl p-4 flex flex-col sm:flex-row gap-4 hover:shadow-md transition-shadow">
               {/* Image */}
               <div className="w-full sm:w-32 h-32 rounded-lg overflow-hidden bg-surface-container-low flex-shrink-0">
